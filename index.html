@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EduExam SMAN 4 Soppeng - Platform Ujian Digital & Asesmen Diagnostik</title>
+  
+  <!-- Favicon & PWA Icons -->
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="shortcut icon" href="icon-192.png">
+  
+  <!-- Web App Manifest (PWA) -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Mobile & PWA Theme Colors -->
+  <meta name="theme-color" content="#1E3A8A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="EduExam SMAN 4 Soppeng">
+
+  <!-- iOS Safari PWA Meta Tags & Touch Icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EduExam">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+
+  <!-- Windows & Edge PWA Meta Tags -->
+  <meta name="msapplication-TileColor" content="#1E3A8A">
+  <meta name="msapplication-TileImage" content="icon-192.png">
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome 6 Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              800: '#1e293b',
+              900: '#1E3A8A',
+              950: '#0F172A'
+            },
+            teal: {
+              600: '#0D9488',
+              700: '#0F766E',
+              800: '#115E59'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js for Kepala Sekolah Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- JSZip for Client-Side DOCX / PPTX Archive Unpacking -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- SheetJS XLSX for Excel Rekap Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- PDF.js for Clean Client-Side PDF Text Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+  </script>
+
+  <!-- Mammoth.js for Clean Client-Side DOCX Text Extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+  <!-- jsPDF & AutoTable for Kisi-Kisi & Report PDF Generation (Blueprint v9.0) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- docx.js for Word DOCX Generation (Blueprint v9.0) -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+
+  <!-- Supabase Cloud Client SDK for PostgreSQL Cloud DB with RLS (Blueprint v8.0) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans antialiased select-none sm:select-auto">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-box" class="toast-container fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
+
+  <!-- ==================== HEADER UTAMA ==================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <!-- Brand & School Logo -->
+      <div class="flex items-center gap-3 cursor-pointer" onclick="window.App.navigateToRoleDashboard()">
+        <img src="/logo-eduexam.png" alt="Logo EduExam SMAN 4 Soppeng" class="h-12 w-auto" />
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-black text-blue-900 text-base sm:text-lg tracking-tight">EduExam</span>
+            <span class="text-[10px] font-bold bg-teal-100 text-teal-800 px-1.5 py-0.5 rounded tracking-wide uppercase">v17.0</span>
+          </div>
+          <p class="text-[11px] text-slate-500 font-medium hidden sm:block">SMAN 4 Soppeng (Neneurang, Kab. Soppeng)</p>
+        </div>
+      </div>
+
+      <!-- Center / Right Controls -->
+      <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Heartbeat Indicator -->
+        <div id="header-heartbeat-badge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 heartbeat-active"></span>
+          <span class="hidden md:inline">Jaringan Stabil</span>
+        </div>
+
+        <!-- Supabase Cloud DB Indicator -->
+        <button onclick="window.App && window.App.showSupabaseStatusModal ? window.App.showSupabaseStatusModal() : null" id="header-supabase-badge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-900 border border-blue-200 hover:bg-blue-100 transition cursor-pointer" title="Status Supabase Cloud Database (PostgreSQL)">
+          <i class="fa-solid fa-cloud text-teal-600"></i>
+          <span class="hidden md:inline">Supabase:</span>
+          <span id="supabase-status-text" class="text-emerald-700 font-bold">Terhubung</span>
+        </button>
+
+        <!-- Info Modal Trigger -->
+        <button onclick="document.getElementById('info-modal').classList.remove('hidden')" class="p-2 text-slate-400 hover:text-blue-900 rounded-xl hover:bg-slate-100 transition" title="Tentang Pengembang & Blueprint">
+          <i class="fa-solid fa-circle-question text-lg"></i>
+        </button>
+
+        <!-- PWA Install Button (Header) -->
+        <button id="pwa-install-header-btn" onclick="window.App.promptPwaInstall()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-teal-600 to-blue-700 hover:from-teal-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition transform hover:scale-105" title="Instal Aplikasi EduExam di Perangkat Ini">
+          <i class="fa-solid fa-mobile-screen-button"></i> <span>Instal App</span>
+        </button>
+
+        <!-- User Profile / Auth Nav -->
+        <div id="nav-user-profile" class="flex items-center">
+          <!-- Dynamic via app.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== GLOBAL SUB-HEADER ==================== -->
+  <!-- Header aplikasi menyertakan Selector Global "Tahun Ajaran" dan "Semester" untuk memfilter data di seluruh role -->
+  <section id="global-sub-header" class="bg-blue-950 text-white border-b border-blue-900 px-4 sm:px-6 py-2.5 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2 sm:gap-4 overflow-x-auto">
+        <span class="font-bold text-teal-300 uppercase tracking-wider flex items-center gap-1.5 text-[11px]">
+          <i class="fa-solid fa-calendar-days"></i> Periode Akademik:
+        </span>
+        
+        <!-- Global Selector Tahun Ajaran -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-blue-200 text-[11px]">Tahun Ajaran:</span>
+          <select id="global-academic-year" onchange="window.App.handleAcademicPeriodChange()" class="bg-blue-900/80 text-white text-xs font-semibold rounded-lg px-2.5 py-1 border border-blue-700 focus:outline-hidden focus:ring-1 focus:ring-teal-400 cursor-pointer">
+            <option value="2025/2026">2025/2026</option>
+            <option value="2024/2025">2024/2025</option>
+            <option value="2026/2027">2026/2027</option>
+          </select>
+        </div>
+
+        <!-- Global Selector Semester -->
+        <div class="flex items-center gap-1.5">
+          <span class="text-blue-200 text-[11px]">Semester:</span>
+          <select id="global-semester" onchange="window.App.handleAcademicPeriodChange()" class="bg-blue-900/80 text-white text-xs font-semibold rounded-lg px-2.5 py-1 border border-blue-700 focus:outline-hidden focus:ring-1 focus:ring-teal-400 cursor-pointer">
+            <option value="Ganjil">Ganjil</option>
+            <option value="Genap">Genap</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hidden lg:flex items-center gap-2 text-blue-200 text-[11px]">
+        <span>Pengembang: <strong>Syarif Hidayatullah, S.Pd.</strong></span>
+        <span>&bull;</span>
+        <span>Arsitektur: <strong>Independent Web SPA (Tailwind CSS &amp; Vanilla JS)</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== MAIN CONTENT SPA VIEWS ==================== -->
+  <main class="flex-1">
+
+    <!-- 1. LOGIN VIEW (PORTAL 4 ROLE HASIL BINDING) -->
+    <section id="login-view" class="py-10 sm:py-16 px-4">
+      <div class="max-w-md mx-auto">
+        <!-- Logo & Header -->
+        <div class="text-center mb-8 flex flex-col items-center">
+          <img src="/logo-eduexam.png" alt="Logo EduExam SMAN 4 Soppeng" class="h-12 w-auto mb-3" />
+          <h1 class="text-2xl sm:text-3xl font-black text-blue-900 tracking-tight">EduExam SMAN 4 Soppeng</h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
+            Platform Ujian Digital & Asesmen Diagnostik Real-Time
+          </p>
+        </div>
+
+        <!-- BANNER INSTAL APLIKASI PWA (LANDING PAGE PORTAL UJIAN) -->
+        <div id="pwa-install-card" class="mb-5 bg-gradient-to-r from-blue-900 via-indigo-900 to-teal-900 rounded-3xl p-5 text-white shadow-xl border-2 border-teal-400/50 transition">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-2xl text-amber-300 shrink-0 shadow-inner">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+              </div>
+              <div>
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 uppercase tracking-wider mb-1">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Aplikasi PWA
+                </div>
+                <h3 class="text-base font-black text-white leading-tight">📱 Instal Aplikasi EduExam</h3>
+                <p class="text-xs text-teal-100 opacity-90 mt-0.5">Pasang di Android, iOS, atau Laptop untuk akses ujian offline &amp; cepat tanpa browser.</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button onclick="window.App.promptPwaInstall()" class="flex-1 sm:flex-initial px-4 py-2.5 bg-white text-blue-950 hover:bg-teal-50 font-black text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 shrink-0 transform hover:scale-105 cursor-pointer">
+                <i class="fa-solid fa-download text-teal-700"></i> Instal Sekarang
+              </button>
+              <button onclick="document.getElementById('pwa-install-card').classList.add('hidden')" class="p-2 text-white/60 hover:text-white transition cursor-pointer" title="Tutup Notifikasi">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- AUTO-LOGIN BARCODE / QR SCANNER HERO CARD (BAB 4.2 BLUEPRINT v6.0) -->
+        <div class="mb-5 bg-gradient-to-r from-blue-900 via-indigo-950 to-teal-900 rounded-3xl p-5 sm:p-6 text-white shadow-xl border-2 border-teal-500/40 cursor-pointer hover:shadow-2xl hover:border-teal-400 transition transform hover:-translate-y-0.5" onclick="window.App.openQrScannerModal()">
+          <div class="flex items-center justify-between gap-4">
+            <div class="space-y-1.5 flex-1">
+              <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black bg-teal-400 text-teal-950 uppercase tracking-wider shadow-xs">
+                <i class="fa-solid fa-bolt"></i> Auto-Login Single-Card
+              </span>
+              <h2 class="text-lg sm:text-xl font-black text-white leading-tight">Scan Barcode Kartu Ujian</h2>
+              <p class="text-xs text-teal-100 opacity-90 leading-relaxed">
+                Arahkan kamera HP ke Barcode / QR Code pada Kartu Ujian untuk langsung masuk tanpa perlu ketik Nama & NIS!
+              </p>
+            </div>
+            <div class="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur border border-white/30 flex items-center justify-center text-3xl text-teal-300 shrink-0 shadow-inner">
+              <i class="fa-solid fa-qrcode heartbeat-active"></i>
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-white/15 flex items-center justify-between text-[11px] text-teal-200 font-semibold">
+            <span><i class="fa-solid fa-camera mr-1"></i> Buka Pemindai Kamera HP</span>
+            <span class="text-teal-300 font-bold flex items-center gap-1">Scan Sekarang <i class="fa-solid fa-arrow-right"></i></span>
+          </div>
+        </div>
+
+        <!-- Pemisah / Divider -->
+        <div class="relative flex py-2 items-center text-xs text-slate-400 mb-2">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 uppercase font-bold text-[10px] tracking-wider text-slate-500">Atau Masuk Manual via Akun</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-6 sm:p-8">
+          <!-- Role Selector Tabs (4 Role Utama SMAN 4 Soppeng - Blueprint v17.0) -->
+          <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl mb-6 overflow-x-auto no-scrollbar">
+            <button type="button" onclick="setActiveRole('siswa')" id="login-tab-siswa" class="flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition bg-blue-900 text-white shadow-sm flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+              <i class="fa-solid fa-user-graduate"></i> Siswa
+            </button>
+            <button type="button" onclick="setActiveRole('guru')" id="login-tab-guru" class="flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+              <i class="fa-solid fa-chalkboard-user"></i> Guru
+            </button>
+            <button type="button" onclick="setActiveRole('admin')" id="login-tab-admin" class="flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+              <i class="fa-solid fa-shield-halved"></i> Admin
+            </button>
+            <button type="button" onclick="setActiveRole('kepsek')" id="login-tab-kepsek" class="flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer">
+              <i class="fa-solid fa-graduation-cap"></i> Kepsek
+            </button>
+          </div>
+
+          <!-- Role Explanation Note -->
+          <div id="login-role-note" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 mb-5 leading-relaxed">
+            <i class="fa-solid fa-qrcode text-teal-600 mr-1"></i> Siswa dapat masuk instan via <strong>Scan Barcode Kartu Ujian (Auto-Login)</strong> atau ketik Nama + NIS.
+          </div>
+
+          <!-- Login Form -->
+          <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+            <div>
+              <label id="login-identifier-label" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Nama Lengkap Siswa:
+              </label>
+              <input type="text" id="login-identifier-input" placeholder="Masukkan Nama Lengkap Siswa" required class="w-full text-sm px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-inner">
+            </div>
+
+            <div>
+              <label id="login-password-label" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Kata Sandi / NIS Siswa:
+              </label>
+              <input type="password" id="login-password-input" placeholder="Masukkan Nomor Induk Siswa (NIS)" required class="w-full text-sm px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-inner">
+            </div>
+
+            <button type="submit" class="w-full py-3.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem
+            </button>
+          </form>
+
+          <!-- Script Responsif Instan untuk Role Switcher & Login -->
+          <script>
+            function setActiveRole(role) {
+              window.currentActiveRole = role;
+              if (window.App) {
+                window.App.activeRoleTab = role;
+                if (typeof window.App.setActiveRole === 'function') {
+                  window.App.setActiveRole(role);
+                } else if (typeof window.App.setLoginRole === 'function') {
+                  window.App.setLoginRole(role);
+                }
+              }
+              // Jalankan pembaruan visual DOM secara langsung (Instant Response)
+              ['siswa', 'guru', 'admin', 'kepsek'].forEach(function(r) {
+                var btn = document.getElementById('login-tab-' + r);
+                if (btn) {
+                  if (r === role) {
+                    btn.className = 'flex-1 py-2.5 text-xs sm:text-sm font-bold rounded-xl transition bg-blue-900 text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer';
+                  } else {
+                    btn.className = 'flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5 cursor-pointer';
+                  }
+                }
+              });
+
+              var idLabel = document.getElementById('login-identifier-label');
+              var idInput = document.getElementById('login-identifier-input');
+              var pwdLabel = document.getElementById('login-password-label');
+              var pwdInput = document.getElementById('login-password-input');
+              var noteEl = document.getElementById('login-role-note');
+
+              if (role === 'admin') {
+                if (idLabel) idLabel.innerText = 'Email Administrator:';
+                if (idInput) {
+                  idInput.type = 'email';
+                  idInput.placeholder = 'sman4soppeng@gmail.com';
+                  idInput.value = 'sman4soppeng@gmail.com';
+                }
+                if (pwdLabel) pwdLabel.innerText = 'Kata Sandi Administrator:';
+                if (pwdInput) {
+                  pwdInput.type = 'password';
+                  pwdInput.placeholder = '21405';
+                  pwdInput.value = '21405';
+                }
+                if (noteEl) noteEl.innerHTML = '<i class="fa-solid fa-shield-halved text-purple-600 mr-1"></i> <strong>Admin Utama SMAN 4 Soppeng:</strong> Kredensial default: <code class="bg-purple-100 text-purple-900 px-1 py-0.5 rounded font-mono">sman4soppeng@gmail.com</code> / <code class="bg-purple-100 text-purple-900 px-1 py-0.5 rounded font-mono">21405</code>. Kelola Mata Pelajaran, Guru, Siswa, dan Jadwal.';
+              } else if (role === 'guru') {
+                if (idLabel) idLabel.innerText = 'NIP / Username Guru:';
+                if (idInput) {
+                  idInput.type = 'text';
+                  idInput.placeholder = 'Masukkan NIP atau Username Guru';
+                  idInput.value = '';
+                }
+                if (pwdLabel) pwdLabel.innerText = 'Kata Sandi Guru:';
+                if (pwdInput) {
+                  pwdInput.type = 'password';
+                  pwdInput.placeholder = 'Masukkan kata sandi guru';
+                  pwdInput.value = '';
+                }
+                if (noteEl) noteEl.innerHTML = '<i class="fa-solid fa-chalkboard-user text-teal-600 mr-1"></i> Akun Guru dibuat & dikelola terpusat oleh Admin Sekolah (Mendukung Multi-Mapel & Multi-Kelas).';
+              } else if (role === 'kepsek') {
+                if (idLabel) idLabel.innerText = 'Email / Username Kepala Sekolah:';
+                if (idInput) {
+                  idInput.type = 'text';
+                  idInput.placeholder = 'Masukkan email atau username kepala sekolah';
+                  idInput.value = '';
+                }
+                if (pwdLabel) pwdLabel.innerText = 'Kata Sandi Kepala Sekolah:';
+                if (pwdInput) {
+                  pwdInput.type = 'password';
+                  pwdInput.placeholder = 'Masukkan kata sandi kepala sekolah';
+                  pwdInput.value = '';
+                }
+                if (noteEl) noteEl.innerHTML = '<i class="fa-solid fa-graduation-cap text-amber-600 mr-1"></i> Laporan eksekutif grafik tren nilai & asesmen diagnostik.';
+              } else {
+                if (idLabel) idLabel.innerText = 'Nama Lengkap Siswa:';
+                if (idInput) {
+                  idInput.type = 'text';
+                  idInput.placeholder = 'Masukkan Nama Lengkap Siswa';
+                  idInput.value = '';
+                }
+                if (pwdLabel) pwdLabel.innerText = 'Kata Sandi / NIS Siswa:';
+                if (pwdInput) {
+                  pwdInput.type = 'password';
+                  pwdInput.placeholder = 'Masukkan Nomor Induk Siswa (NIS)';
+                  pwdInput.value = '';
+                }
+                if (noteEl) noteEl.innerHTML = '<i class="fa-solid fa-qrcode text-teal-600 mr-1"></i> Siswa dapat masuk instan via <strong>Scan Barcode Kartu Ujian (Auto-Login)</strong> atau ketik Nama + NIS.';
+              }
+            }
+            window.setActiveRole = setActiveRole;
+
+            function handleLoginSubmit(event) {
+              if (event && event.preventDefault) event.preventDefault();
+              var id = (document.getElementById('login-identifier-input')?.value || '').trim();
+              var pwd = (document.getElementById('login-password-input')?.value || '').trim();
+
+              // 1. FAST-PATH OTENTIKASI ADMIN DEFAULT (Selalu Berhasil 100%)
+              if ((id.toLowerCase() === 'sman4soppeng@gmail.com' || id.toLowerCase() === 'admin') && pwd === '21405') {
+                var adminUser = {
+                  user_id: '00000000-0000-4000-8000-000000000001',
+                  username: 'admin',
+                  email: 'sman4soppeng@gmail.com',
+                  nama_lengkap: 'Administrator SMAN 4 Soppeng',
+                  role: 'admin',
+                  status_aktif: true,
+                  mata_pelajaran_list: [],
+                  kelas_diampu_list: []
+                };
+                localStorage.setItem('eduexam_auth_session', JSON.stringify(adminUser));
+                if (window.App) {
+                  window.App.currentUser = adminUser;
+                  window.App.activeRoleTab = 'admin';
+                  window.App.navigateTo('admin');
+                  if (typeof window.App.showToast === 'function') {
+                    window.App.showToast('Login berhasil! Selamat datang, Administrator SMAN 4 Soppeng.', 'success');
+                  }
+                } else {
+                  document.getElementById('login-view')?.classList.add('hidden');
+                  document.getElementById('admin-dashboard-view')?.classList.remove('hidden');
+                  document.getElementById('global-sub-header')?.classList.remove('hidden');
+                  if (window.AdminModule && typeof window.AdminModule.renderAdminView === 'function') {
+                    window.AdminModule.renderAdminView();
+                  }
+                }
+                return false;
+              }
+
+              // 2. Jika bukan admin default, delegasikan ke App.handleLoginSubmit
+              if (window.App && typeof window.App.handleLoginSubmit === 'function') {
+                return window.App.handleLoginSubmit(event);
+              }
+            }
+            window.handleLoginSubmit = handleLoginSubmit;
+          </script>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ADMIN DASHBOARD VIEW -->
+    <section id="admin-dashboard-view" class="hidden">
+      <!-- Dynamic via admin.js -->
+    </section>
+
+    <!-- 3. GURU DASHBOARD VIEW -->
+    <section id="guru-dashboard-view" class="hidden">
+      <!-- Dynamic via guru.js -->
+    </section>
+
+    <!-- 4. SISWA DASHBOARD VIEW -->
+    <section id="siswa-dashboard-view" class="hidden">
+      <!-- Dynamic via app.js -->
+    </section>
+
+    <!-- 5. KEPALA SEKOLAH DASHBOARD VIEW -->
+    <section id="kepsek-dashboard-view" class="hidden">
+      <!-- Dynamic via kepsek.js -->
+    </section>
+
+    <!-- 6. RUANG UJIAN SISWA (STUDENT EXAM ROOM) -->
+    <section id="student-exam-room-view" class="hidden">
+      <!-- Dynamic via exam-engine.js -->
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-white border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-500 no-print mt-auto">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center">
+        <img src="/logo-eduexam.png" alt="Logo EduExam SMAN 4 Soppeng" class="h-6 w-auto inline-block mr-2" onerror="this.onerror=null; this.src='assets/logo.png';" />
+        <span class="font-bold text-slate-700">EduExam SMAN 4 Soppeng</span>
+        <span class="ml-1">&bull; Neneurang, Kab. Soppeng, Sulawesi Selatan</span>
+      </div>
+      <div>
+        <span>Karya Digital & Blueprint Arsitektur v6.0 oleh: <strong class="text-blue-900 font-semibold">Syarif Hidayatullah, S.Pd.</strong></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal 1: Peringatan Deteksi Pindah Tab (Visibility API Anti-Pindah Tab) -->
+  <div id="tab-switch-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl border-4 border-red-500 animate-bounce">
+      <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-4xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-xl sm:text-2xl font-black text-red-600">PERINGATAN KEAMANAN UJIAN!</h3>
+      <p class="text-xs sm:text-sm text-slate-700 font-medium mt-2 leading-relaxed">
+        Sistem mendeteksi Anda <strong>meninggalkan halaman ujian</strong> (pindah tab browser, minimize aplikasi, atau split screen).
+      </p>
+
+      <div class="my-4 p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-900">
+        Pelanggaran ini adalah yang ke- <strong id="tab-switch-count-display" class="text-lg text-red-700 font-black">1</strong> kali.
+        <div class="mt-1 font-semibold text-slate-600">
+          Insiden ini telah dicatat secara real-time ke Live Log Admin & Guru SMAN 4 Soppeng!
+        </div>
+      </div>
+
+      <button onclick="window.ExamEngine.closeTabSwitchModal()" class="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow transition">
+        Saya Mengerti & Kembali Mengerjakan Ujian
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal 2: Sheet Rumus Popup (Formula & Science Reference Sheet) -->
+  <div id="formula-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-square-root-variable text-indigo-600 text-xl"></i>
+          <h3 class="text-lg font-black text-slate-900">Lembar Rumus & Referensi Sains SMAN 4 Soppeng</h3>
+        </div>
+        <button onclick="window.ExamEngine.closeFormulaModal()" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto py-4 space-y-4 text-xs sm:text-sm text-slate-700">
+        <!-- Fisika Kelistrikan & Energi -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <h4 class="font-bold text-blue-900 mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <i class="fa-solid fa-bolt text-teal-600"></i> Fisika: Listrik, Magnet & Energi Baru Terbarukan
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Hukum Faraday:</strong> ε = -N · (ΔΦ / Δt)
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>GGL Induksi Generator:</strong> ε = N · B · A · ω · sin(ωt)
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Daya Fotovoltaik:</strong> P = η · I · A (Watt)
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Rugi Daya Panas:</strong> P_loss = I² · R
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Fluks Magnetik:</strong> Φ = B · A · cos(θ) (Weber)
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Energi Listrik:</strong> W = P · t = V · I · t (Joule)
+            </div>
+          </div>
+        </div>
+
+        <!-- Termodinamika & Satuan SI -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <h4 class="font-bold text-teal-800 mb-2 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <i class="fa-solid fa-temperature-arrow-up text-teal-600"></i> Termodinamika & Satuan SI
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Efisiensi Carnot:</strong> η = (1 - T_C / T_H) × 100%
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Hukum I Termo:</strong> ΔU = Q - W
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Satuan Fluks:</strong> Weber (Wb) = T · m²
+            </div>
+            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Satuan Induktansi:</strong> Henry (H)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 flex justify-end">
+        <button onclick="window.ExamEngine.closeFormulaModal()" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">
+          Tutup Sheet Rumus
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Konfirmasi Selesai Ujian -->
+  <div id="confirm-submit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-center">
+      <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center text-3xl">
+        <i class="fa-solid fa-clipboard-check"></i>
+      </div>
+      <h3 class="text-xl font-black text-slate-900">Konfirmasi Selesai Ujian</h3>
+      <p class="text-xs text-slate-500 mt-1 mb-4">
+        Pastikan Anda telah memeriksa kembali seluruh jawaban sebelum diserahkan.
+      </p>
+
+      <div id="submit-modal-summary" class="mb-5 text-left">
+        <!-- Dynamic via exam-engine.js -->
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="window.ExamEngine.closeConfirmSubmitModal()" class="flex-1 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition">
+          Cek Kembali
+        </button>
+        <button onclick="window.ExamEngine.submitExamWithStagger(false)" class="flex-1 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md transition">
+          Ya, Kirim Jawaban
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Staggered Batch Submission Progress Bar (Bab 6.3) -->
+  <div id="stagger-submit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-center space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-2xl animate-spin">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-black text-slate-900">Staggered Batch Submission Guard</h3>
+        <p class="text-xs text-slate-500 mt-1">Mengamankan pengiriman data ujian secara bertahap...</p>
+      </div>
+
+      <!-- Animated Progress Bar -->
+      <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+        <div id="stagger-progress-fill" class="bg-gradient-to-r from-teal-500 to-blue-700 h-full w-0 transition-all duration-300"></div>
+      </div>
+
+      <p id="stagger-status-text" class="text-[11px] text-slate-500 leading-relaxed font-mono">
+        Menyeimbangkan antrean server... Melindungi server dari lonjakan beban serentak (Bab 6.3).
+      </p>
+    </div>
+  </div>
+
+  <!-- Modal 5: Tambah User Baru (Admin) -->
+  <div id="admin-user-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-blue-900"></i> Tambah Pengguna Baru
+        </h3>
+        <button onclick="window.AdminModule.closeAddUserModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="window.AdminModule.saveNewUser(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Peran Akses (Role):</label>
+          <select id="modal-user-role" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold">
+            <option value="siswa">Siswa (Login NIS)</option>
+            <option value="guru">Guru Mata Pelajaran</option>
+            <option value="kepsek">Kepala Sekolah</option>
+            <option value="admin">Administrator</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nama Lengkap:</label>
+          <input type="text" id="modal-user-nama" required placeholder="Contoh: Muhammad Ihsan" class="w-full p-2.5 border border-slate-300 rounded-xl">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Username / NIS:</label>
+          <input type="text" id="modal-user-username" required placeholder="Contoh: 10251 atau ihsan" class="w-full p-2.5 border border-slate-300 rounded-xl">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Kata Sandi:</label>
+          <input type="password" id="modal-user-password" required placeholder="Masukkan kata sandi" class="w-full p-2.5 border border-slate-300 rounded-xl">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Kelas (Siswa) / Multi-Mapel (Guru - pisahkan koma):</label>
+          <input type="text" id="modal-user-kelas" placeholder="Siswa: XII MIPA 1 | Guru: Fisika Terapan, IPA Terpadu, Informatika" class="w-full p-2.5 border border-slate-300 rounded-xl">
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2">
+          <button type="button" onclick="window.AdminModule.closeAddUserModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-blue-900 text-white rounded-xl font-bold">Simpan Pengguna</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5A: Tambah / Edit Kelas (Admin) -->
+  <div id="admin-add-class-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-chalkboard text-blue-900"></i>
+          <span id="admin-class-modal-title">Form Tambah Kelas Baru</span>
+        </h3>
+        <button onclick="window.AdminModule.closeClassModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="window.AdminModule.saveClass(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="modal-class-id" value="">
+        
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nama Kelas / Rombel:</label>
+          <input type="text" id="modal-class-nama" required placeholder="Contoh: X.1, XI MIPA 1, XII MIPA 2" class="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900">
+          <p class="text-[10px] text-slate-400 mt-1">Dapat berupa format Kurikulum Merdeka (X.1, X.2) atau Jurusan.</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Tingkat / Fase:</label>
+            <select id="modal-class-tingkat" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-white">
+              <option value="X">Kelas X (Fase E)</option>
+              <option value="XI">Kelas XI (Fase F)</option>
+              <option value="XII">Kelas XII (Fase F)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Peminatan / Jurusan:</label>
+            <select id="modal-class-jurusan" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-white">
+              <option value="Umum">Umum / Reguler</option>
+              <option value="MIPA">MIPA / Sains</option>
+              <option value="IPS">IPS / Sosial</option>
+              <option value="Bahasa">Bahasa</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Wali Kelas / Guru Pembina:</label>
+          <input type="text" id="modal-class-wali" placeholder="Contoh: Syarif Hidayatullah, S.Pd." class="w-full p-2.5 border border-slate-300 rounded-xl">
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-4">
+          <button type="button" onclick="window.AdminModule.closeClassModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-bold shadow">Simpan Data Kelas</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5B: Tambah Siswa Manual (Admin) -->
+  <div id="admin-add-student-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-plus text-teal-700"></i> Form Tambah Siswa Manual
+        </h3>
+        <button onclick="window.AdminModule.closeStudentModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="window.AdminModule.saveManualStudent(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nama Lengkap Siswa:</label>
+          <input type="text" id="modal-student-nama" required placeholder="Contoh: Muhammad Ihsan Pratama" class="w-full p-2.5 border border-slate-300 rounded-xl font-medium">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nomor Induk Siswa (NIS):</label>
+            <input type="text" id="modal-student-nis" required placeholder="Contoh: 10255" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-bold text-blue-900">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Pilih Kelas:</label>
+            <select id="modal-student-kelas" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-white">
+              <!-- Populated dynamically by AdminModule -->
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Kata Sandi Akun (Opsional):</label>
+          <input type="text" id="modal-student-password" placeholder="Kosongkan jika ingin sama dengan NIS" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono">
+          <p class="text-[10px] text-slate-400 mt-1">Sistem otomatis men-generate token Barcode QR Single-Card resmi.</p>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-4">
+          <button type="button" onclick="window.AdminModule.closeStudentModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow">Simpan Siswa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5C: Pratinjau Import Excel Siswa (Admin) -->
+  <div id="admin-excel-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i> Pratinjau Import Data Siswa dari Excel
+          </h3>
+          <p id="excel-preview-summary-text" class="text-xs text-slate-500 mt-0.5">Mendeteksi 0 baris data siswa.</p>
+        </div>
+        <button onclick="window.AdminModule.closeExcelPreviewModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 flex-1 overflow-y-auto text-xs pr-1">
+        <div class="bg-emerald-50 p-3 rounded-2xl border border-emerald-200 text-emerald-900 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <div>
+              <span class="font-bold block" id="excel-preview-filename">Nama_Berkas.xlsx</span>
+              <span class="text-[11px] text-emerald-700" id="excel-preview-classes-detected">Kelas Terdeteksi: -</span>
+            </div>
+          </div>
+          <span class="px-3 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs" id="excel-preview-count-badge">0 Siswa</span>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-xs text-slate-600">
+            <thead class="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">No</th>
+                <th class="py-2.5 px-3">Nama Lengkap</th>
+                <th class="py-2.5 px-3">NIS</th>
+                <th class="py-2.5 px-3">Kelas</th>
+                <th class="py-2.5 px-3">Token Barcode QR Baru</th>
+              </tr>
+            </thead>
+            <tbody id="excel-preview-table-body" class="divide-y divide-slate-100 font-mono text-[11px]">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 mt-4 flex items-center justify-between gap-3">
+        <button type="button" onclick="window.AdminModule.closeExcelPreviewModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs">
+          Batal
+        </button>
+        <button type="button" onclick="window.AdminModule.confirmImportExcelStudents()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl font-bold shadow text-xs flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-down"></i> Konfirmasi & Simpan ke Database
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6: Form Input / Edit 5 Tipe Soal Bertahap (Guru) -->
+  <div id="guru-add-question-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-file-pen text-teal-600"></i>
+          <span id="guru-modal-title">Form Input & Edit 5 Variasi Tipe Soal</span>
+        </h3>
+        <button onclick="window.GuruModule.closeAddQuestionModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="guru-question-form" onsubmit="event.preventDefault(); window.GuruModule.saveQuestionWithStatus('siap')" class="overflow-y-auto space-y-4 pr-1 text-xs">
+        <input type="hidden" id="manual-q-id" value="">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Mata Pelajaran:</label>
+            <input type="text" id="manual-q-mapel" value="Fisika Terapan & Energi" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Pilih 1 dari 5 Tipe Soal:</label>
+            <select id="manual-q-type" onchange="window.GuruModule.updateQuestionFormFields(this.value)" class="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-teal-50 text-teal-900">
+              <option value="pg">1. Pilihan Ganda (PG Standard)</option>
+              <option value="pgk">2. Pilihan Ganda Kompleks (PGK Checkbox)</option>
+              <option value="truefalse">3. Benar / Salah (True/False)</option>
+              <option value="matching">4. Menjodohkan (Matching Pair)</option>
+              <option value="essay">5. Isian Singkat & Esai (AI Rubrik)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Modul Penilaian Formatif & Sumatif (Blueprint v11.0) -->
+        <div class="p-3.5 rounded-2xl bg-gradient-to-r from-teal-50/70 via-indigo-50/40 to-slate-50 border border-teal-200/80 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <i class="fa-solid fa-shapes text-teal-600"></i> Kategori Asesmen / Penilaian:
+            </label>
+            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-100 text-teal-800 border border-teal-200">
+              Kurikulum Merdeka SMAN 4 Soppeng
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-teal-200 cursor-pointer hover:bg-teal-50/50 transition">
+              <input type="radio" name="manual_q_kategori" id="manual-kategori-formatif" value="formatif" checked onchange="window.GuruModule.toggleManualAssessmentCategory(this.value)" class="w-4 h-4 text-teal-600 focus:ring-teal-500">
+              <div>
+                <span class="block font-bold text-teal-900">Penilaian Formatif</span>
+                <span class="block text-[10px] text-slate-500">Kuis, Diagnostik, Tugas Materi</span>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-indigo-50/50 transition">
+              <input type="radio" name="manual_q_kategori" id="manual-kategori-sumatif" value="sumatif" onchange="window.GuruModule.toggleManualAssessmentCategory(this.value)" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+              <div>
+                <span class="block font-bold text-indigo-900">Penilaian Sumatif</span>
+                <span class="block text-[10px] text-slate-500">PTS / PAS Tengah & Akhir Semester</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Sub-Input Penilaian Formatif -->
+          <div id="manual-formatif-sub" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div>
+              <label class="block font-semibold text-slate-700 text-[11px] mb-1">Jenis Asesmen Formatif:</label>
+              <select id="manual-q-jenis-formatif" class="w-full p-2 border border-slate-300 rounded-xl bg-white text-xs font-semibold">
+                <option value="Kuis Harian">Kuis Harian</option>
+                <option value="Asesmen Diagnostik">Asesmen Diagnostik</option>
+                <option value="Tugas Formatif">Tugas Formatif</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 text-[11px] mb-1">Materi / Bab Pokok yang Diuji:</label>
+              <input type="text" id="manual-q-materi-bab-formatif" placeholder="Contoh: Bab 1 Konversi Energi & Mikrometer" class="w-full p-2 border border-slate-300 rounded-xl text-xs font-medium">
+            </div>
+          </div>
+
+          <!-- Sub-Input Penilaian Sumatif -->
+          <div id="manual-sumatif-sub" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div>
+              <label class="block font-semibold text-slate-700 text-[11px] mb-1">Periode Ujian Sumatif:</label>
+              <select id="manual-q-periode-sumatif" class="w-full p-2 border border-slate-300 rounded-xl bg-white text-xs font-semibold">
+                <option value="Penilaian Tengah Semester (PTS)">Penilaian Tengah Semester (PTS)</option>
+                <option value="Penilaian Akhir Semester (PAS)">Penilaian Akhir Semester (PAS)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 text-[11px] mb-1">Cakupan Materi Sumatif:</label>
+              <input type="text" id="manual-q-materi-bab-sumatif" placeholder="Contoh: Seluruh Capaian Semester Ganjil" class="w-full p-2 border border-slate-300 rounded-xl text-xs font-medium">
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Kelas Multi-Select & Keterangan Bab Materi (Blueprint v9.0) -->
+        <div class="space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-bold text-slate-700">
+                <i class="fa-solid fa-users-rectangle text-teal-600 mr-1"></i> Target Kelas (Centang Multi-Kelas Fleksibel):
+              </label>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="window.GuruModule.toggleAllManualClasses(true)" class="text-[11px] text-teal-700 hover:underline font-bold">Centang Semua</button>
+                <span class="text-slate-300 text-xs">|</span>
+                <button type="button" onclick="window.GuruModule.toggleAllManualClasses(false)" class="text-[11px] text-slate-500 hover:underline font-bold">Hapus Centang</button>
+              </div>
+            </div>
+            <div id="manual-q-target-kelas-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 bg-slate-50 border border-slate-300 rounded-xl max-h-36 overflow-y-auto text-xs">
+              <!-- Populated dynamically by guru.js -->
+            </div>
+            <div id="manual-q-target-kelas-summary" class="text-[10px] text-teal-700 font-bold mt-1">
+              Terpilih: Semua Kelas
+            </div>
+            <p class="text-[10px] text-slate-400 mt-0.5">Anda dapat memilih satu, beberapa kelas spesifik, atau seluruh kelas sekaligus.</p>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Keterangan Soal / Nama Bab Materi Pokok:</label>
+            <input type="text" id="manual-q-bab" placeholder="Contoh: Bab 1: Konversi Fotovoltaik Surya" class="w-full p-2.5 border border-slate-300 rounded-xl font-medium">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Narasi / Stimulus Soal:</label>
+          <textarea id="manual-q-narasi" rows="3" required placeholder="Tuliskan stimulus, teks kasus, atau pertanyaan butir soal di sini..." class="w-full p-3 border border-slate-300 rounded-xl leading-relaxed"></textarea>
+        </div>
+
+        <!-- Input & Preview Gambar Soal (Point 1 User Request) -->
+        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-image text-teal-600"></i> Sisipkan Gambar / Diagram Soal:
+            </label>
+            <button type="button" onclick="document.getElementById('manual-q-file-input').click()" class="px-3 py-1.5 bg-white hover:bg-teal-50 text-teal-800 border border-teal-300 rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-camera"></i> 📷 Unggah / Sisip Gambar Soal
+            </button>
+          </div>
+
+          <input type="file" id="manual-q-file-input" accept="image/*" class="hidden" onchange="window.GuruModule.handleManualImageUpload(event)">
+          <input type="hidden" id="manual-q-image-url" value="">
+
+          <!-- Alternatif Input URL Gambar -->
+          <div class="flex items-center gap-2">
+            <input type="text" id="manual-q-image-url-input" placeholder="Atau tempelkan tautan URL gambar (https://... / data:image/...)" class="flex-1 p-2 text-xs border border-slate-300 rounded-lg bg-white outline-none focus:ring-1 focus:ring-teal-500" oninput="window.GuruModule.handleManualImageUrlInput(this.value)">
+          </div>
+
+          <!-- Komponen Image Preview (Pratinjau Gambar) -->
+          <div id="manual-q-image-preview-box" class="hidden p-3 bg-white rounded-xl border border-slate-200 flex flex-col items-center gap-2.5 shadow-inner">
+            <div class="relative max-h-56 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-1">
+              <img id="manual-q-image-preview" src="" alt="Pratinjau Gambar Soal" class="max-h-52 w-auto object-contain mx-auto rounded-lg">
+            </div>
+            <button type="button" onclick="window.GuruModule.removeManualQuestionImage()" class="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-trash-can"></i> Hapus Gambar
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Container for 5 Question Types Fields -->
+        <div id="manual-q-options-container" class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <!-- Populated by guru.js -->
+        </div>
+
+        <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <button type="button" onclick="window.GuruModule.closeAddQuestionModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold hover:bg-slate-50">Batal</button>
+          
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="window.GuruModule.saveQuestionWithStatus('draf')" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow transition flex items-center gap-1.5" title="Simpan sebagai Draf untuk diedit kembali nanti">
+              <i class="fa-solid fa-floppy-disk"></i> Simpan Draf
+            </button>
+            <button type="button" onclick="window.GuruModule.saveQuestionWithStatus('siap')" class="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow transition flex items-center gap-1.5" title="Simpan dan tandai sebagai Siap Ujian">
+              <i class="fa-solid fa-circle-check"></i> Simpan & Siap Ujian
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Info Blueprint & Pengembang Aplikasi -->
+  <div id="info-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-slate-700 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <img src="assets/logo.png" alt="Logo" class="w-14 h-14 object-contain">
+          <div>
+            <h3 class="text-base font-black text-blue-900">EduExam SMAN 4 Soppeng</h3>
+            <span class="text-xs text-slate-500">Blueprint Arsitektur &amp; Desain v17.0 (Independent Web Architecture, Clean Slate Initial Baseline, Full Mapel CRUD &amp; Default Admin sman4soppeng@gmail.com / 21405)</span>
+          </div>
+        </div>
+        <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="text-xs space-y-3 leading-relaxed">
+        <div class="p-3 bg-blue-50 rounded-2xl border border-blue-200">
+          <div class="font-bold text-blue-950 mb-1">Identitas Inovator & Pengembang:</div>
+          <div><strong>Nama:</strong> Syarif Hidayatullah, S.Pd.</div>
+          <div><strong>Satuan Pendidikan:</strong> SMA Negeri 4 Soppeng, Sulawesi Selatan</div>
+          <div><strong>Arsitektur:</strong> Independent Web Application (SPA - Tailwind CSS &amp; JavaScript)</div>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="font-bold text-slate-900">5 Pilar Anti-Error & Anti-Crash (Bab 6 Blueprint):</div>
+          <ul class="list-disc list-inside text-slate-600 space-y-1 pl-1">
+            <li><strong>6.1 LocalStorage Auto-Save:</strong> Jawaban siswa tersimpan instan di memori HP dalam hitungan milidetik.</li>
+            <li><strong>6.2 Heartbeat Connection Guard:</strong> Deteksi sinyal jaringan real-time tanpa mengunci pengerjaan ujian.</li>
+            <li><strong>6.3 Staggered Batch Submission:</strong> Penyeimbangan antrean acak saat serah serentak guna mencegah server crash.</li>
+            <li><strong>6.4 Page Exit Guard:</strong> Proteksi penekanan tombol back/reload tanpa sengaja.</li>
+            <li><strong>6.5 AI Fallback (Fuzzy Keyword Matching):</strong> Mitigasi otomatis saat koneksi offline atau rate-limit API.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 flex justify-end">
+        <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl bg-blue-900 text-white font-bold text-xs hover:bg-blue-950 transition">
+          Tutup Informasi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Supabase Cloud Database Status & SQL Setup -->
+  <div id="supabase-status-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 text-slate-700 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center text-2xl font-bold shadow-xs">
+            <i class="fa-solid fa-database"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-blue-900">Supabase Cloud Database</h3>
+            <span class="text-xs text-slate-500 font-medium">PostgreSQL Engine &bull; SMAN 4 Soppeng</span>
+          </div>
+        </div>
+        <button onclick="window.App.closeSupabaseStatusModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs leading-relaxed">
+        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 font-mono text-[11px]">
+          <div><strong class="text-slate-700 font-sans">URL Supabase:</strong> <span class="text-blue-700">https://jzdjnsxsgeddlkhmwogk.supabase.co</span></div>
+          <div><strong class="text-slate-700 font-sans">Kunci Akses:</strong> <span class="text-slate-600">sb_publishable_itW... (Anon Key Aktif)</span></div>
+          <div id="modal-supabase-status" class="pt-1 border-t border-slate-200 font-sans text-xs">
+            <span class="text-emerald-600 font-bold"><i class="fa-solid fa-circle-check"></i> Terhubung Aktif ke Supabase Cloud Database.</span>
+          </div>
+        </div>
+
+        <div class="p-3 bg-blue-50/60 rounded-2xl border border-blue-200 text-slate-700">
+          <div class="font-bold text-blue-950 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-teal-600"></i> 8 Tabel Cloud Terintegrasi:
+          </div>
+          <div class="grid grid-cols-2 gap-1 text-[11px] text-slate-600">
+            <div>&bull; <code class="font-bold text-blue-900">tb_users</code> (4 Role Pengguna)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_subjects</code> (Master Mapel)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_assessments</code> (Formatif/Sumatif)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_questions</code> (Bank Soal)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_exam_schedules</code> (Jadwal Ujian)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_student_results</code> (Hasil Ujian)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_ai_reflections</code> (Refleksi AI)</div>
+            <div>&bull; <code class="font-bold text-blue-900">tb_archives</code> (Arsip Berkas)</div>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-slate-500">
+          Jika tabel di Supabase Dashboard masih memerlukan konfigurasi izin akses (*Row-Level Security / RLS Policy*), Anda dapat menyalin skrip SQL resmi di bawah lalu menempelkannya di menu <strong>SQL Editor</strong> Supabase Dashboard.
+        </p>
+      </div>
+
+      <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <button onclick="window.App.copySupabaseSqlScript()" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer">
+          <i class="fa-solid fa-copy"></i> Salin Skrip SQL Supabase
+        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="window.App.testSupabaseConnection()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer">
+            <i class="fa-solid fa-rotate"></i> Uji Koneksi
+          </button>
+          <button onclick="window.App.closeSupabaseStatusModal()" class="px-4 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs transition cursor-pointer">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8: Pemindai Kamera Barcode / QR Code (Auto-Login Single-Card Bab 4.2) -->
+  <div id="qr-scanner-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 text-slate-800 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-qrcode text-base"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-black text-blue-950">Scan Barcode Kartu Ujian</h3>
+            <span class="text-[10px] text-teal-700 font-bold uppercase tracking-wider">Auto-Login Siswa Single-Card</span>
+          </div>
+        </div>
+        <button onclick="window.App.closeQrScannerModal()" class="text-slate-400 hover:text-slate-700 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Live Video Viewfinder Frame -->
+      <div class="relative w-full h-56 bg-slate-900 rounded-2xl overflow-hidden border-2 border-teal-500/80 shadow-inner flex items-center justify-center">
+        <video id="qr-video-preview" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+        <!-- Viewfinder Reticle Corners -->
+        <div class="absolute inset-4 pointer-events-none flex flex-col justify-between">
+          <div class="flex justify-between">
+            <div class="w-6 h-6 border-t-4 border-l-4 border-teal-400 rounded-tl-lg"></div>
+            <div class="w-6 h-6 border-t-4 border-r-4 border-teal-400 rounded-tr-lg"></div>
+          </div>
+          <div class="flex justify-between">
+            <div class="w-6 h-6 border-b-4 border-l-4 border-teal-400 rounded-bl-lg"></div>
+            <div class="w-6 h-6 border-b-4 border-r-4 border-teal-400 rounded-br-lg"></div>
+          </div>
+        </div>
+
+        <!-- Laser Scanning Line -->
+        <div class="absolute inset-x-6 h-0.5 bg-teal-400 shadow-[0_0_12px_#2dd4bf] qr-scan-laser pointer-events-none"></div>
+
+        <!-- Watermark target text -->
+        <div class="absolute bottom-2 inset-x-0 text-center pointer-events-none">
+          <span class="text-[10px] font-bold text-white/80 bg-black/40 px-3 py-1 rounded-full backdrop-blur-xs">
+            Arahkan QR Code Kartu ke Kotak Ini
+          </span>
+        </div>
+      </div>
+
+      <div id="qr-scanner-status" class="text-xs text-center text-slate-500 font-medium">
+        Kamera HP aktif. Menunggu deteksi Barcode / QR Code Kartu Ujian...
+      </div>
+
+      <!-- Quick Simulation Selector (Sangat Praktis untuk Demo & Uji Coba Tanpa Kamera/Kertas Fisik) -->
+      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+        <label class="block text-[11px] font-bold text-slate-700 flex items-center justify-between">
+          <span><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i> Uji Coba Scan Instan (Pilih Kartu Siswa):</span>
+          <span class="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-bold">Simulasi 1-Klik</span>
+        </label>
+        
+        <select id="simulated-qr-select" class="w-full text-xs font-semibold p-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-teal-500">
+          <option value="EDU4-10245-AHMAD">Ahmad Fauzan (10245) - XII MIPA 1</option>
+          <option value="EDU4-10246-NURUL">Nurul Azizah (10246) - XII MIPA 1</option>
+          <option value="EDU4-10247-RIZKY">Muh. Rizky Pratama (10247) - XII MIPA 2</option>
+          <option value="EDU4-10248-SITI">Siti Rahma (10248) - XII IPS 1</option>
+          <option value="EDU4-10249-TENRI">Andi Tenri Bau (10249) - XII MIPA 2</option>
+          <option value="EDU4-10250-FAJAR">Fajar Kurniawan (10250) - XII IPS 1</option>
+        </select>
+
+        <button onclick="window.App.handleBarcodeAutoLogin(document.getElementById('simulated-qr-select').value)" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-barcode"></i> Simulasikan Scan Barcode Kartu Ini
+        </button>
+      </div>
+
+      <!-- Manual Token Input (Jika Menggunakan Barcode Scanner USB / Handheld Gun) -->
+      <div class="pt-1">
+        <div class="flex gap-2">
+          <input type="text" id="manual-barcode-token-input" placeholder="Atau ketik/scan token manual..." class="flex-1 text-xs px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase">
+          <button onclick="window.App.handleBarcodeAutoLogin(document.getElementById('manual-barcode-token-input').value)" class="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs shadow-xs">
+            Verifikasi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9: Pratinjau Pembesaran Gambar / Diagram Soal (Image Zoom Modal) -->
+  <div id="image-zoom-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-4" onclick="this.classList.add('hidden')">
+    <div class="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl p-3 sm:p-5 overflow-hidden shadow-2xl flex flex-col items-center" onclick="event.stopPropagation()">
+      <div class="w-full flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+          <i class="fa-solid fa-image text-teal-600"></i> Diagram & Ilustrasi Soal
+        </span>
+        <button onclick="document.getElementById('image-zoom-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="overflow-auto max-h-[75vh] w-full flex items-center justify-center p-2 bg-slate-50 rounded-2xl border border-slate-200">
+        <img id="image-zoom-target" src="" alt="Perbesar Diagram Soal" class="max-h-[70vh] w-auto object-contain rounded-xl">
+      </div>
+      <span class="text-[11px] text-slate-400 mt-2 italic">Ketuk di luar kotak atau tombol silang untuk menutup</span>
+    </div>
+  </div>
+
+  <!-- Modal 10: Form Tambah Akun Admin Baru (Hak Khusus Super Admin - Blueprint v8.0) -->
+  <div id="admin-add-admin-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i class="fa-solid fa-user-shield text-purple-700"></i> Form Tambah Akun Admin Baru
+        </h3>
+        <button onclick="window.AdminModule.closeAddAdminModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="window.AdminModule.saveNewAdmin(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Nama Lengkap Operator / Admin:</label>
+          <input type="text" id="modal-admin-nama" required placeholder="Contoh: Darmawan, S.Kom (Operator Sesi 1)" class="w-full p-2.5 border border-slate-300 rounded-xl font-medium">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Username Admin:</label>
+          <input type="text" id="modal-admin-username" required placeholder="Contoh: admin_piket1" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono font-bold text-blue-900">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Kata Sandi Akun:</label>
+          <input type="password" id="modal-admin-password" required placeholder="Minimal 6 karakter" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Jabatan / Lokasi Piket:</label>
+          <input type="text" id="modal-admin-jabatan" placeholder="Contoh: Operator Lab Komputer A SMAN 4 Soppeng" class="w-full p-2.5 border border-slate-300 rounded-xl font-medium">
+          <p class="text-[10px] text-slate-400 mt-1">Akun ini memiliki hak akses Admin Standar untuk kontrol jadwal ujian dan import siswa.</p>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100 mt-4">
+          <button type="button" onclick="window.AdminModule.closeAddAdminModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white rounded-xl font-bold shadow">
+            <i class="fa-solid fa-user-plus mr-1"></i> Buat Akun Admin
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 11: Konfigurasi Supabase Cloud PostgreSQL & Sinkronisasi DB (Blueprint v8.0) -->
+  <div id="admin-supabase-config-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-cloud text-teal-600"></i> Integrasi Supabase Cloud PostgreSQL
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">Arsitektur Cloud-Managed dengan Row Level Security (RLS) Sesuai Bab 2 Blueprint v8.0.</p>
+        </div>
+        <button onclick="document.getElementById('admin-supabase-config-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 overflow-y-auto pr-1 text-xs">
+        <!-- Status Banner -->
+        <div id="supabase-status-banner" class="p-3.5 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-500 heartbeat-active"></span>
+            <div>
+              <div class="font-bold text-teal-950" id="supabase-status-title">Mode Cloud & Offline-First Aktif</div>
+              <div class="text-[11px] text-teal-800" id="supabase-status-desc">Penyimpanan lokal LocalStorage beroperasi penuh. Cloud PostgreSQL siap disinkronkan.</div>
+            </div>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-black bg-teal-200 text-teal-900 uppercase tracking-wider" id="supabase-badge">Offline-First</span>
+        </div>
+
+        <!-- Form Konfigurasi -->
+        <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Supabase Project URL:</label>
+            <input type="text" id="supabase-url-input" placeholder="https://your-project-id.supabase.co" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Supabase Anon Public API Key:</label>
+            <textarea id="supabase-key-input" rows="2" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-[11px]"></textarea>
+          </div>
+        </div>
+
+        <!-- 6 Cloud Tables Checklist -->
+        <div class="bg-white p-3.5 rounded-2xl border border-slate-200 space-y-2">
+          <span class="font-bold text-slate-700 block">Status 6 Tabel Relasional PostgreSQL (Bab 5):</span>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_users (5 Role)</div>
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_academic_period</div>
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_questions (5 Tipe)</div>
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_exam_sessions (Jadwal)</div>
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_student_results</div>
+            <div class="flex items-center gap-1.5 text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check"></i> tb_audit_logs (Aktivitas)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-200 mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.AdminModule.testSupabaseConnection()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plug"></i> Uji Koneksi Cloud
+          </button>
+          <button type="button" onclick="window.AdminModule.syncToSupabaseCloud()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Sinkronkan Data ke Cloud
+          </button>
+        </div>
+        <button type="button" onclick="window.AdminModule.saveSupabaseConfig()" class="px-4 py-2 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-bold text-xs shadow">
+          Simpan Konfigurasi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 12: Pengaturan Kunci API Gemini Guru Dual-Mode (Blueprint v9.0) -->
+  <div id="guru-gemini-key-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-key text-amber-500"></i> Pengaturan Kunci API Gemini (Dual-Mode)
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">Sesuai Bab 4.1 Blueprint v9.0: Kunci Personal Guru & Fallback Default Sistem.</p>
+        </div>
+        <button onclick="window.GuruModule.closeGeminiKeyModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Mode Status Banner -->
+      <div id="gemini-status-banner" class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-base font-bold">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+          </div>
+          <div>
+            <div class="font-bold text-amber-950 text-xs" id="gemini-status-title">Mode Default Sistem Aktif</div>
+            <div class="text-[11px] text-amber-800 leading-tight" id="gemini-status-desc">Menggunakan Kunci API Default Sistem SMAN 4 Soppeng.</div>
+          </div>
+        </div>
+        <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200 text-amber-900 font-mono" id="gemini-badge">System Default</span>
+      </div>
+
+      <!-- Form Input API Key -->
+      <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Kunci API Gemini Personal Guru (Opsional):</label>
+          <input type="password" id="guru-gemini-key-input" placeholder="Masukkan Google AI Studio API Key (AIzaSy...)" class="w-full p-2.5 border border-slate-300 rounded-xl font-mono text-xs bg-white">
+          <p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+            Dapatkan kunci gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-teal-700 font-bold underline">Google AI Studio</a>. Jika dikosongkan, sistem <strong>otomatis beralih (fallback)</strong> menggunakan Kunci API Default Sistem:
+            <code class="block mt-1 p-1.5 bg-slate-200 rounded font-mono text-[10px] text-slate-800 break-all select-all">Kunci API Gemini Default Sistem (Terintegrasi Otomatis)</code>
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+        <button type="button" onclick="window.GuruModule.testGeminiKey()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5">
+          <i class="fa-solid fa-vial"></i> Uji Kunci API
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.GuruModule.resetToDefaultGeminiKey()" class="px-3 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+            Gunakan Default
+          </button>
+          <button type="button" onclick="window.GuruModule.saveGeminiKey()" class="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold text-xs shadow">
+            Simpan Pengaturan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 13: Form Tambah / Edit Butir Kisi-Kisi Ujian (Blueprint v9.0) -->
+  <div id="guru-kisi-kisi-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-table-list text-teal-700"></i>
+            <span id="kisi-modal-title">Form Butir Matriks Kisi-Kisi</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5">Penyusunan indikator soal dan taksonomi Bloom C1–C6.</p>
+        </div>
+        <button onclick="window.GuruModule.closeKisiKisiModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form onsubmit="window.GuruModule.saveKisiKisiItem(event)" class="space-y-3.5 overflow-y-auto text-xs pr-1">
+        <input type="hidden" id="modal-kisi-id" value="">
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Nomor Butir Soal:</label>
+            <input type="number" id="modal-kisi-nomor" required min="1" max="100" class="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-blue-900">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Bentuk / Tipe Soal:</label>
+            <select id="modal-kisi-bentuk" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-white">
+              <option value="Pilihan Ganda (PG)">Pilihan Ganda (PG)</option>
+              <option value="Pilihan Ganda Kompleks (PGK)">Pilihan Ganda Kompleks (PGK)</option>
+              <option value="Benar / Salah (True/False)">Benar / Salah (True/False)</option>
+              <option value="Menjodohkan (Matching Pair)">Menjodohkan (Matching Pair)</option>
+              <option value="Isian Singkat & Esai">Isian Singkat &amp; Esai</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Level Kognitif Taksonomi Bloom:</label>
+          <select id="modal-kisi-level" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold bg-white">
+            <option value="C1 (Mengingat)">C1 (Mengingat / Remembering) - LOTS</option>
+            <option value="C2 (Memahami)">C2 (Memahami / Understanding) - MOTS</option>
+            <option value="C3 (Menerapkan)">C3 (Menerapkan / Applying) - MOTS</option>
+            <option value="C4 (Menganalisis)">C4 (Menganalisis / Analyzing) - HOTS</option>
+            <option value="C5 (Mengevaluasi)">C5 (Mengevaluasi / Evaluating) - HOTS</option>
+            <option value="C6 (Mencipta)">C6 (Mencipta / Creating) - HOTS</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Materi Pokok / Nama Bab:</label>
+          <input type="text" id="modal-kisi-bab" required placeholder="Contoh: Bab 1: Konversi Fotovoltaik Surya" class="w-full p-2.5 border border-slate-300 rounded-xl font-medium">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Capaian Pembelajaran (CP) / Kompetensi Dasar (KD):</label>
+          <textarea id="modal-kisi-cp" rows="2" required placeholder="Tuliskan rumusan CP / KD..." class="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Indikator Soal:</label>
+          <textarea id="modal-kisi-indikator" rows="2" required placeholder="Contoh: Disajikan narasi fisis, peserta didik dapat menentukan..." class="w-full p-2.5 border border-slate-300 rounded-xl leading-relaxed"></textarea>
+        </div>
+
+        <div class="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="window.GuruModule.closeKisiKisiModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow">Simpan Butir Kisi-Kisi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 14: Pratinjau Generator CP & TP (Blueprint v9.0) -->
+  <div id="guru-cptp-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-bullseye text-pink-600"></i>
+            <span>Rumusan CP &amp; TP (Google Gemini AI)</span>
+          </h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="cptp-preview-meta">Mata Pelajaran: Fisika Terapan &bull; SMAN 4 Soppeng</p>
+        </div>
+        <button onclick="window.GuruModule.closeCPTPModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 overflow-y-auto pr-1 text-xs">
+        <!-- Capaian Pembelajaran Box -->
+        <div class="p-3.5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 space-y-1.5">
+          <span class="text-[11px] font-black uppercase text-purple-900 tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-graduation-cap text-purple-700"></i> Capaian Pembelajaran (CP / KD):
+          </span>
+          <p id="cptp-preview-cp" class="text-xs text-purple-950 font-semibold leading-relaxed">
+            Peserta didik mampu menganalisis konsep dan formulasi ilmiah...
+          </p>
+        </div>
+
+        <!-- Tujuan Pembelajaran Box -->
+        <div class="space-y-2">
+          <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+            4 Tujuan Pembelajaran (TP) Terukur:
+          </span>
+          <ul id="cptp-preview-tp" class="space-y-2">
+            <!-- Populated dynamically -->
+          </ul>
+        </div>
+      </div>
+
+      <div class="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+        <button type="button" onclick="window.GuruModule.closeCPTPModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+          Tutup
+        </button>
+        <button type="button" onclick="window.GuruModule.applyCPTPToKisiKisi()" class="px-4 py-2 bg-gradient-to-r from-pink-600 to-purple-700 hover:from-pink-700 hover:to-purple-800 text-white rounded-xl font-bold text-xs shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-table-list"></i> Terapkan ke Matriks Kisi-Kisi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 15: Detail Laporan AI Refleksi Pembelajaran (Blueprint v11.0) -->
+  <div id="guru-reflective-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200 mb-1">
+            <i class="fa-solid fa-robot text-teal-600"></i> AI Reflective Diagnostic Portfolio &bull; v11.0
+          </div>
+          <h3 id="refl-modal-title" class="text-base sm:text-lg font-bold text-slate-900">
+            Detail Refleksi Pembelajaran
+          </h3>
+          <p id="refl-modal-meta" class="text-xs text-slate-500">Mata Pelajaran: Fisika &bull; Kelas: X.1 &bull; 15 Okt 2025</p>
+        </div>
+        <button onclick="window.GuruModule.closeReflectiveDetailModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="refl-modal-body" class="space-y-4 overflow-y-auto pr-1 text-xs">
+        <!-- Injected dynamically by GuruModule.viewAIReflectionDetail -->
+      </div>
+
+      <div class="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+        <button type="button" onclick="window.GuruModule.closeReflectiveDetailModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+          Tutup
+        </button>
+        <button type="button" id="refl-modal-print-btn" onclick="window.GuruModule.printCurrentReflectiveDetail()" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-indigo-700 hover:from-teal-700 hover:to-indigo-800 text-white rounded-xl font-bold text-xs shadow flex items-center gap-2">
+          <i class="fa-solid fa-print"></i> Cetak Dokumen Refleksi Guru (PDF)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 16: Unggah Berkas & Gambar ke Arsip Guru (Blueprint v13.0) -->
+  <div id="guru-archive-upload-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 mb-1">
+            <i class="fa-solid fa-folder-arrow-up text-amber-600"></i> Repositori Arsip Digital &bull; v13.0
+          </div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">
+            Unggah Berkas ke Arsip Guru
+          </h3>
+          <p class="text-xs text-slate-500">Simpan naskah modul ajar (PDF/DOCX/TXT) atau gambar diagram (JPG/PNG) untuk penguat konteks AI.</p>
+        </div>
+        <button onclick="window.GuruModule.closeUploadArchiveModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 overflow-y-auto pr-1 text-xs">
+        <!-- Dropzone File Selector -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Pilih Berkas (Dokumen atau Gambar):</label>
+          <div class="border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-2xl p-4 text-center cursor-pointer transition bg-amber-50/40" onclick="document.getElementById('archive-file-input').click()">
+            <input type="file" id="archive-file-input" accept=".pdf,.docx,.doc,.pptx,.txt,.md,.jpg,.jpeg,.png,.webp,.svg" class="hidden" onchange="window.GuruModule.handleArchiveFileSelect(event)">
+            <div class="w-10 h-10 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-lg mb-1.5">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <div id="archive-dropzone-label" class="text-xs font-bold text-slate-800">Klik untuk memilih berkas dari komputer</div>
+            <p class="text-[10px] text-slate-500 mt-0.5">Mendukung PDF, Word (DOCX), PPTX, TXT, dan Gambar (JPG/PNG/SVG)</p>
+          </div>
+        </div>
+
+        <!-- Live Extraction / Preview Result Box -->
+        <div id="archive-file-preview-box" class="hidden p-3 rounded-xl border border-amber-200 bg-amber-50/70 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-950 text-xs flex items-center gap-1.5" id="archive-preview-name">
+              <i class="fa-solid fa-file text-amber-600"></i> Nama Berkas
+            </span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-amber-800 border border-amber-200" id="archive-preview-badge">
+              Dokumen
+            </span>
+          </div>
+          <div id="archive-preview-content" class="text-[11px] text-slate-600">
+            <!-- Dynamic info: thumbnail for image, word count for doc -->
+          </div>
+        </div>
+
+        <!-- Judul Berkas / Label Arsip -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Judul / Label Arsip:</label>
+          <input type="text" id="archive-input-title" placeholder="Contoh: Modul Ajar Pengukuran & Mikrometer Sekrup" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold text-slate-800 focus:ring-2 focus:ring-amber-400">
+        </div>
+
+        <!-- Kategori & Bab Pokok -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Jenis Konten Arsip:</label>
+            <select id="archive-input-type" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold text-slate-800 bg-white">
+              <option value="DOKUMEN">Dokumen Naskah / Modul Ajar</option>
+              <option value="GAMBAR">Diagram / Foto Saintifik</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Materi / Bab Pokok:</label>
+            <input type="text" id="archive-input-chapter" placeholder="Contoh: Bab 1 Pengukuran" class="w-full p-2.5 border border-slate-300 rounded-xl font-semibold text-slate-800">
+          </div>
+        </div>
+
+        <!-- Opsi Langsung Tandai Sebagai Referensi Aktif -->
+        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-teal-50 border border-teal-200 cursor-pointer select-none">
+          <input type="checkbox" id="archive-auto-attach-check" checked class="w-4 h-4 text-teal-600 rounded">
+          <span class="text-xs font-bold text-teal-900">
+            Tandai berkas sebagai referensi materi aktif guru
+          </span>
+        </label>
+      </div>
+
+      <div class="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
+        <button type="button" onclick="window.GuruModule.closeUploadArchiveModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+          Batal
+        </button>
+        <button type="button" id="archive-submit-btn" onclick="window.GuruModule.saveUploadArchiveSubmit()" class="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-teal-700 hover:from-amber-700 hover:to-teal-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan ke Arsip Berkas
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 17: Pratinjau / Penampil Arsip Berkas & Gambar (Blueprint v13.0) -->
+  <div id="guru-archive-view-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div class="min-w-0 pr-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span id="arc-view-type-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+              Dokumen
+            </span>
+            <span id="arc-view-size-badge" class="text-[10px] text-slate-500 font-semibold">120 KB</span>
+          </div>
+          <h3 id="arc-view-title" class="text-base sm:text-lg font-bold text-slate-900 truncate">
+            Pratinjau Arsip
+          </h3>
+          <p id="arc-view-meta" class="text-xs text-slate-500 truncate">Mata Pelajaran &bull; Tanggal Unggah</p>
+        </div>
+        <button onclick="window.GuruModule.closeArchiveViewModal()" class="text-slate-400 hover:text-slate-700 shrink-0">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="arc-view-body" class="space-y-4 overflow-y-auto pr-1 text-xs max-h-[60vh]">
+        <!-- Dynamic content: image or scrollable full text -->
+      </div>
+
+      <div class="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+        <button type="button" onclick="window.GuruModule.closeArchiveViewModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+          Tutup
+        </button>
+        <button type="button" id="arc-view-action-btn" onclick="window.GuruModule.switchTab('import-soal'); window.GuruModule.closeArchiveViewModal();" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-emerald-700 hover:from-teal-700 hover:to-emerald-800 text-white rounded-xl font-bold text-xs shadow flex items-center gap-2">
+          <i class="fa-solid fa-file-import"></i> Buka di Menu Impor Soal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 18: Pemilih Arsip Penguat Konteks AI (Archive Picker Modal - Blueprint v13.0) -->
+  <div id="guru-archive-picker-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div>
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 mb-1">
+            <i class="fa-solid fa-paperclip text-purple-600"></i> Context Reinforcement &bull; Strict Grounding
+          </div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">
+            Pilih Arsip Penguat Konteks AI
+          </h3>
+          <p class="text-xs text-slate-500">Centang dokumen naskah materi atau diagram gambar yang ingin dijadikan landasan pembuatan soal oleh AI Gemini.</p>
+        </div>
+        <button onclick="window.GuruModule.closeArchivePickerModal()" class="text-slate-400 hover:text-slate-700">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div class="relative flex-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="archive-picker-search" oninput="window.GuruModule.filterArchivePickerList(this.value)" placeholder="Cari nama berkas / bab materi..." class="w-full pl-8 pr-3 py-2 text-xs border border-slate-300 rounded-xl">
+        </div>
+        <div class="flex items-center gap-1 text-xs">
+          <button type="button" onclick="window.GuruModule.selectAllPickerArchives(true)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-700 text-[11px]">Pilih Semua</button>
+          <button type="button" onclick="window.GuruModule.selectAllPickerArchives(false)" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-700 text-[11px]">Hapus Semua</button>
+        </div>
+      </div>
+
+      <!-- List of Archives -->
+      <div id="archive-picker-list-container" class="space-y-2 overflow-y-auto pr-1 max-h-[50vh] text-xs">
+        <!-- Rendered dynamically by window.GuruModule.renderArchivePickerList() -->
+      </div>
+
+      <div class="pt-3 flex items-center justify-between gap-2 border-t border-slate-100">
+        <span id="archive-picker-selected-count" class="text-xs font-bold text-purple-800">
+          0 Berkas Dipilih
+        </span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.GuruModule.closeArchivePickerModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-slate-600 font-semibold text-xs hover:bg-slate-50">
+            Batal
+          </button>
+          <button type="button" onclick="window.GuruModule.applyArchivePickerSelection()" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-xl font-bold text-xs shadow-md flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i> Terapkan Lampiran Penguat
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 19: Panduan Instalasi PWA (iOS Safari & Desktop) -->
+  <div id="pwa-guide-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-scale-up space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-blue-100 text-blue-900 flex items-center justify-center text-lg font-bold">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div>
+            <h3 id="pwa-guide-title" class="text-base font-black text-slate-800">📱 Panduan Instalasi Aplikasi</h3>
+            <p class="text-xs text-slate-500">EduExam SMAN 4 Soppeng (PWA)</p>
+          </div>
+        </div>
+        <button onclick="document.getElementById('pwa-guide-modal').classList.add('hidden')" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="pwa-guide-content" class="text-xs text-slate-600 space-y-3 leading-relaxed">
+        <!-- Injected dynamically via app.js -->
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end">
+        <button onclick="document.getElementById('pwa-guide-modal').classList.add('hidden')" class="px-5 py-2.5 bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer">
+          Saya Mengerti
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="official-print-report-container" class="hidden print:block p-8 text-black bg-white">
+    <!-- Kop Surat Resmi SMA Negeri 4 Soppeng -->
+    <div class="border-b-4 border-double border-black pb-4 mb-6 flex items-center justify-between gap-4">
+      <img src="/logo-sekolah.png" alt="Logo SMAN 4 Soppeng" class="h-16 w-auto" />
+      <div class="text-center flex-1">
+        <h2 class="text-base font-bold uppercase tracking-wider">PEMERINTAH PROVINSI SULAWESI SELATAN</h2>
+        <h2 class="text-base font-bold uppercase tracking-wider">DINAS PENDIDIKAN</h2>
+        <h1 class="text-xl font-black uppercase tracking-tight">UPT SMA NEGERI 4 SOPPENG</h1>
+        <p class="text-xs italic mt-0.5">Alamat: Neneurang, Salokaraja, Kec. Lalabata, Kab. Soppeng, Sulawesi Selatan 90861</p>
+        <p class="text-[10px]">Laman: https://sman4soppeng.sch.id &bull; Platform: EduExam Digital Assessment</p>
+      </div>
+      <div class="w-16"></div>
+    </div>
+
+    <!-- Print Title -->
+    <div class="text-center mb-6">
+      <h3 id="print-report-title" class="text-sm font-black uppercase underline">LAPORAN HASIL ASESMEN DIAGNOSTIK & SUMATIF SISWA</h3>
+      <p id="print-report-subtitle" class="text-xs mt-1">Tahun Ajaran 2025/2026 - Semester Ganjil &bull; Mata Pelajaran: Fisika Terapan & Energi Mandiri</p>
+    </div>
+
+    <!-- Dynamic Print Data Content -->
+    <div id="print-dynamic-table" class="my-6">
+      <!-- Injected table / executive summary when printing -->
+    </div>
+
+    <!-- Tanda Tangan Resmi Pengesahan -->
+    <div class="mt-12 flex justify-between text-xs pt-8">
+      <div>
+        <p>Mengetahui,</p>
+        <p class="font-bold">Kepala SMAN 4 Soppeng</p>
+        <div class="h-20"></div>
+        <p class="font-bold underline">H. Abdul Rahman, S.Pd., M.Pd.</p>
+        <p>NIP. 19680512 199303 1 008</p>
+      </div>
+      <div class="text-right">
+        <p>Soppeng, 15 Oktober 2025</p>
+        <p class="font-bold">Guru Pengampu Mata Pelajaran</p>
+        <div class="h-20"></div>
+        <p class="font-bold underline">Syarif Hidayatullah, S.Pd.</p>
+        <p>NIP. 19890414 201503 1 003</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/ai-engine.js"></script>
+  <script src="js/exam-engine.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/guru.js"></script>
+  <script src="js/kepsek.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- ==================== PWA SERVICE WORKER REGISTRATION ==================== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .then((registration) => {
+            console.log('[EduExam PWA] Service Worker terdaftar sukses dengan scope:', registration.scope);
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[EduExam PWA] Versi baru EduExam tersedia dan siap digunakan.');
+                    if (window.App && window.App.showToast) {
+                      window.App.showToast('Versi baru EduExam terdeteksi dan diperbarui di latar belakang!', 'info');
+                    }
+                  }
+                };
+              }
+            };
+          })
+          .catch((error) => {
+            console.warn('[EduExam PWA] Registrasi Service Worker gagal:', error);
+          });
+      });
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,127 @@
+/* EduExam SMAN 4 Soppeng - Custom Styling & Print Media */
+:root {
+  --navy-primary: #1E3A8A;
+  --navy-dark: #0f172a;
+  --navy-light: #3B82F6;
+  --teal-primary: #0D9488;
+  --teal-light: #14B8A6;
+  --teal-dark: #0f766e;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  background-color: #F8FAFC;
+  color: #1E293B;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Pulse animation for heartbeat */
+@keyframes heartPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.heartbeat-active {
+  animation: heartPulse 2s infinite ease-in-out;
+}
+
+/* Question Option selection styling */
+.option-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 2px solid #E2E8F0;
+}
+.option-card:hover {
+  border-color: #0D9488;
+  background-color: #F0FDFA;
+}
+.option-card.selected {
+  border-color: #0D9488;
+  background-color: #CCFBF1;
+  box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.1), 0 2px 4px -2px rgba(13, 148, 136, 0.1);
+}
+
+/* Question Navigation Button */
+.q-nav-btn {
+  transition: all 0.15s ease-in-out;
+}
+.q-nav-btn.active {
+  ring-width: 3px;
+  ring-color: #0D9488;
+  font-weight: 700;
+  transform: translateY(-2px);
+}
+
+/* Screen Media: Pastikan wadah laporan resmi sama sekali TIDAK pernah tampil di layar web */
+@media screen {
+  #official-print-report-container, .print-only {
+    display: none !important;
+  }
+}
+
+/* Print Styling for Official SMAN 4 Soppeng Exam & Diagnostic Reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print, header, nav, main, #global-sub-header, footer, .toast-container, #formula-modal, #tab-switch-modal, #info-modal, #supabase-status-modal, #qr-scanner-modal, #pwa-guide-modal {
+    display: none !important;
+  }
+  #official-print-report-container, .print-only {
+    display: block !important;
+  }
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .page-break {
+    page-break-after: always;
+  }
+}
+
+#official-print-report-container, .print-only {
+  display: none;
+}
+
+/* QR Scanner Laser Animation */
+@keyframes qrLaserAnim {
+  0% { top: 6%; opacity: 0.8; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 6%; opacity: 0.8; }
+}
+
+.qr-scan-laser {
+  animation: qrLaserAnim 2.2s infinite ease-in-out;
+}
+
+/* Touch friendly for mobile phone exam sheet */
+@media (max-width: 640px) {
+  .exam-question-text {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .option-card {
+    padding: 0.75rem 0.85rem;
+  }
+}

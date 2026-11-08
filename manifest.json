@@ -1,0 +1,52 @@
+{
+  "short_name": "EduExam",
+  "name": "EduExam SMAN 4 Soppeng",
+  "description": "Platform Asesmen Diagnostik & Ujian Digital Berbasis Kurikulum Merdeka - SMAN 4 Soppeng",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "theme_color": "#1E3A8A",
+  "background_color": "#0F172A",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mulai Ujian Siswa",
+      "short_name": "Ujian Siswa",
+      "description": "Buka portal ujian digital siswa",
+      "url": "/#login-view",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
+
