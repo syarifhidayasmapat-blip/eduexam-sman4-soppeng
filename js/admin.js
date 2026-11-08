@@ -108,7 +108,11 @@ class AdminController {
 
   switchTab(tabName) {
     this.currentTab = tabName;
-    const content = document.getElementById('admin-tab-content');
+    let content = document.getElementById('admin-tab-content');
+    if (!content) {
+      this.renderAdminView();
+      content = document.getElementById('admin-tab-content');
+    }
     if (content) {
       content.innerHTML = this._renderCurrentTabContent();
     }
@@ -1825,7 +1829,7 @@ class AdminController {
 
   // ==================== 4. MODUL MANAJEMEN USER (4 ROLE) ====================
   _renderUsersTab() {
-    const users = window.EduDB.getUsers();
+    const users = (window.EduDB && window.EduDB.getUsers) ? window.EduDB.getUsers() : [];
 
     return `
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
@@ -1852,25 +1856,32 @@ class AdminController {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              ${users.map(u => {
+              ${users.length === 0 ? `
+                <tr>
+                  <td colspan="6" class="text-center py-8 text-slate-400">Belum ada pengguna terdaftar. Klik tombol "Tambah Pengguna Baru" untuk menambahkan akun.</td>
+                </tr>
+              ` : users.map(u => {
                 let roleBadge = 'bg-slate-100 text-slate-700';
-                if (u.role === 'admin') roleBadge = 'bg-purple-100 text-purple-800 font-bold';
-                else if (u.role === 'guru') roleBadge = 'bg-teal-100 text-teal-800 font-bold';
-                else if (u.role === 'siswa') roleBadge = 'bg-blue-100 text-blue-800 font-bold';
-                else if (u.role === 'kepsek') roleBadge = 'bg-amber-100 text-amber-800 font-bold';
+                const roleLower = String(u.role || '').toLowerCase();
+                if (roleLower === 'admin' || roleLower === 'super_admin') roleBadge = 'bg-purple-100 text-purple-800 font-bold';
+                else if (roleLower === 'guru') roleBadge = 'bg-teal-100 text-teal-800 font-bold';
+                else if (roleLower === 'siswa') roleBadge = 'bg-blue-100 text-blue-800 font-bold';
+                else if (roleLower === 'kepsek') roleBadge = 'bg-amber-100 text-amber-800 font-bold';
 
-                const isGuru = (u.role === 'guru');
+                const isGuru = (roleLower === 'guru');
                 const teacherSubs = (u.mata_pelajaran_list && u.mata_pelajaran_list.length > 0) ? u.mata_pelajaran_list : (u.mapel ? [u.mapel] : []);
                 const teacherClasses = (u.kelas_diampu_list && u.kelas_diampu_list.length > 0) ? u.kelas_diampu_list : (u.kelas && u.kelas !== '-' ? [u.kelas] : []);
+                const displayName = u.nama_lengkap || u.username || 'Pengguna';
+                const initialChar = displayName.charAt(0).toUpperCase();
 
                 return `
                   <tr class="hover:bg-slate-50/80 transition">
                     <td class="py-3.5 px-4 font-semibold text-slate-900 flex items-center gap-2.5">
                       <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
-                        ${u.nama_lengkap.charAt(0)}
+                        ${initialChar}
                       </div>
                       <div>
-                        <div>${u.nama_lengkap}</div>
+                        <div>${displayName}</div>
                         ${isGuru ? `
                           <div class="flex flex-wrap items-center gap-1 mt-0.5">
                             <span class="text-[10px] text-teal-800 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 font-semibold" title="Mapel Diampu">
@@ -1885,9 +1896,9 @@ class AdminController {
                         `}
                       </div>
                     </td>
-                    <td class="py-3.5 px-4 font-mono font-medium">${u.username}</td>
+                    <td class="py-3.5 px-4 font-mono font-medium">${u.username || '-'}</td>
                     <td class="py-3.5 px-4">
-                      <span class="px-2.5 py-1 rounded-full text-xs uppercase ${roleBadge}">${u.role}</span>
+                      <span class="px-2.5 py-1 rounded-full text-xs uppercase ${roleBadge}">${u.role || '-'}</span>
                     </td>
                     <td class="py-3.5 px-4">
                       ${u.qr_auth_token ? `<span class="font-mono text-[11px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">${u.qr_auth_token}</span>` : '<span class="text-slate-400">-</span>'}
@@ -1921,21 +1932,25 @@ class AdminController {
     const user = window.EduDB.getUserById(userId);
     if (!user) return;
     window.EduDB.updateUser(userId, { status_aktif: !user.status_aktif });
-    if (window.App) window.App.showToast(`Status pengguna ${user.nama_lengkap} diperbarui!`, 'info');
-    this.switchTab('users');
+    if (window.App) window.App.showToast(`Status pengguna ${user.nama_lengkap || user.username} diperbarui!`, 'info');
+    this.switchTab(this.currentTab || 'users');
   }
 
   deleteUser(userId) {
     const user = window.EduDB.getUserById(userId);
-    if (!user) return;
-    if (user.role === 'admin' && user.username === 'admin') {
+    if (!user) {
+      if (window.App) window.App.showToast('Pengguna tidak ditemukan!', 'warning');
+      return;
+    }
+    if (user.role === 'admin' && (user.username === 'admin' || user.email === 'sman4soppeng@gmail.com')) {
       alert('Akun Administrator Utama tidak dapat dihapus untuk keamanan sistem!');
       return;
     }
-    if (confirm(`Yakin ingin menghapus pengguna "${user.nama_lengkap}" (${user.role})?`)) {
+    const displayName = user.nama_lengkap || user.username || 'Pengguna';
+    if (confirm(`Yakin ingin menghapus pengguna "${displayName}" (${user.role})?`)) {
       window.EduDB.deleteUser(userId);
-      if (window.App) window.App.showToast('Pengguna berhasil dihapus!', 'success');
-      this.switchTab('users');
+      if (window.App) window.App.showToast(`Pengguna "${displayName}" berhasil dihapus!`, 'success');
+      this.switchTab(this.currentTab || 'users');
     }
   }
 
@@ -1950,12 +1965,15 @@ class AdminController {
   }
 
   saveNewUser(e) {
-    e.preventDefault();
-    const role = document.getElementById('modal-user-role').value;
-    const username = document.getElementById('modal-user-username').value.trim();
-    const nama_lengkap = document.getElementById('modal-user-nama').value.trim();
-    const password = document.getElementById('modal-user-password').value.trim();
-    const kelas = document.getElementById('modal-user-kelas').value.trim();
+    if (e) {
+      e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
+    const role = document.getElementById('modal-user-role')?.value || 'guru';
+    const username = (document.getElementById('modal-user-username')?.value || '').trim();
+    const nama_lengkap = (document.getElementById('modal-user-nama')?.value || '').trim();
+    const password = (document.getElementById('modal-user-password')?.value || '').trim();
+    const kelas = (document.getElementById('modal-user-kelas')?.value || '').trim();
 
     if (!username || !nama_lengkap || !password) {
       alert('Harap lengkapi semua kolom wajib!');
@@ -1965,7 +1983,7 @@ class AdminController {
     let mata_pelajaran_list = undefined;
     let mapel = undefined;
     if (role === 'guru') {
-      const parts = kelas ? kelas.split(',').map(s => s.trim()).filter(Boolean) : ['Fisika Terapan & Energi'];
+      const parts = kelas ? kelas.split(',').map(s => s.trim()).filter(Boolean) : ['Fisika Terapan & Energi Mandiri'];
       mata_pelajaran_list = parts;
       mapel = parts[0];
     }
@@ -1984,7 +2002,7 @@ class AdminController {
 
     this.closeAddUserModal();
     if (window.App) window.App.showToast(`Pengguna ${nama_lengkap} (${role}) berhasil ditambahkan!`, 'success');
-    this.switchTab('users');
+    this.switchTab(this.currentTab || 'users');
   }
 
   // ==================== PEMETAAN MULTI-MAPEL & MULTI-KELAS GURU (v14.0) ====================
@@ -2027,7 +2045,7 @@ class AdminController {
           </button>
         </div>
 
-        <form id="teacher-mapping-form" onsubmit="window.AdminModule.saveTeacherMapping(event, '${user.user_id}')" class="space-y-5">
+        <form id="teacher-mapping-form" onsubmit="window.AdminModule.saveTeacherMapping(event, '${user.user_id}'); return false;" class="space-y-5">
           <!-- Multi-Select Mata Pelajaran -->
           <div>
             <div class="flex items-center justify-between mb-2">
@@ -2108,7 +2126,10 @@ class AdminController {
 
   closeTeacherMappingModal() {
     const modalEl = document.getElementById('admin-teacher-mapping-modal');
-    if (modalEl) modalEl.classList.add('hidden');
+    if (modalEl) {
+      modalEl.classList.add('hidden');
+      modalEl.remove();
+    }
   }
 
   addCustomSubjectToMappingModal() {
@@ -2146,7 +2167,10 @@ class AdminController {
   }
 
   saveTeacherMapping(e, userId) {
-    if (e) e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+    }
     const subjectCheckboxes = document.querySelectorAll('input[name="teacher_subject"]:checked');
     const selectedSubjects = Array.from(subjectCheckboxes).map(cb => cb.value.trim()).filter(Boolean);
 
@@ -2155,11 +2179,11 @@ class AdminController {
 
     if (selectedSubjects.length === 0) {
       alert('Pilih minimal satu mata pelajaran untuk guru ini!');
-      return;
+      return false;
     }
     if (selectedClasses.length === 0) {
       alert('Pilih minimal satu kelas yang diampu guru ini!');
-      return;
+      return false;
     }
 
     // Pastikan seluruh mapel yang dipilih terdaftar di tb_subjects
@@ -2171,17 +2195,30 @@ class AdminController {
       } catch (err) {}
     });
 
-    const currentAdmin = window.App ? window.App.currentUser : null;
-    const updatedUser = window.EduDB.updateTeacherMapping(userId, {
-      mata_pelajaran_list: selectedSubjects,
-      kelas_diampu_list: selectedClasses
-    }, currentAdmin);
+    try {
+      const currentAdmin = window.App ? window.App.currentUser : null;
+      const updatedUser = window.EduDB.updateTeacherMapping(userId, {
+        mata_pelajaran_list: selectedSubjects,
+        kelas_diampu_list: selectedClasses
+      }, currentAdmin);
 
-    if (updatedUser) {
       this.closeTeacherMappingModal();
-      if (window.App) window.App.showToast(`Pemetaan mata pelajaran & kelas untuk Guru ${updatedUser.nama_lengkap} berhasil diperbarui!`, 'success');
-      this.switchTab('users');
+      if (window.App && window.App.showToast) {
+        window.App.showToast(`Pemetaan mata pelajaran & kelas untuk Guru ${updatedUser ? (updatedUser.nama_lengkap || updatedUser.username) : ''} berhasil diperbarui!`, 'success');
+      }
+
+      // Re-render UI seketika
+      this.switchTab(this.currentTab || 'users');
+
+      // Selaraskan GuruModule jika ada
+      if (window.GuruModule && typeof window.GuruModule._ensureActiveSubject === 'function') {
+        window.GuruModule._ensureActiveSubject();
+      }
+    } catch (err) {
+      console.error('saveTeacherMapping error:', err);
+      alert('Gagal menyimpan pemetaan: ' + (err.message || err));
     }
+    return false;
   }
 
   // ==================== 5. MODUL LIVE LOG KEAMANAN ====================

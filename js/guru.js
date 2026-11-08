@@ -45,7 +45,11 @@ class GuruController {
    * Mengambil daftar seluruh mata pelajaran yang diampu guru saat ini
    */
   getTeacherSubjects() {
-    const user = window.App?.currentUser || {};
+    let user = window.App?.currentUser || {};
+    if (user.user_id && window.EduDB && typeof window.EduDB.getUserById === 'function') {
+      const fresh = window.EduDB.getUserById(user.user_id);
+      if (fresh) user = fresh;
+    }
 
     if (user.mata_pelajaran_list && Array.isArray(user.mata_pelajaran_list) && user.mata_pelajaran_list.length > 0) {
       return user.mata_pelajaran_list;
@@ -61,7 +65,11 @@ class GuruController {
    * Mengambil daftar seluruh kelas yang diampu guru saat ini (v17.0 Clean Slate)
    */
   getTeacherClasses() {
-    const user = window.App?.currentUser || {};
+    let user = window.App?.currentUser || {};
+    if (user.user_id && window.EduDB && typeof window.EduDB.getUserById === 'function') {
+      const fresh = window.EduDB.getUserById(user.user_id);
+      if (fresh) user = fresh;
+    }
     if (user.kelas_diampu_list && Array.isArray(user.kelas_diampu_list) && user.kelas_diampu_list.length > 0) {
       return user.kelas_diampu_list;
     }

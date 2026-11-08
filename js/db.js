@@ -468,6 +468,16 @@ class EduExamDB {
       }
     } catch (e) {}
 
+    if (anySuccess && typeof window !== 'undefined') {
+      try {
+        if (window.App && window.App.currentView === 'admin' && window.AdminModule) {
+          window.AdminModule.switchTab(window.AdminModule.currentTab || 'users');
+        } else if (window.App && window.App.currentView === 'guru' && window.GuruModule) {
+          window.GuruModule.renderGuruView();
+        }
+      } catch (err) {}
+    }
+
     return anySuccess;
   }
 
@@ -1004,11 +1014,20 @@ class EduExamDB {
   // --- USERS & BARCODE AUTH TOKEN (BAB 4.2 BLUEPRINT) ---
   getUsers(role = null) {
     if (!role) return this.data.users;
-    return this.data.users.filter(u => u.role === role);
+    const cleanRole = String(role).trim().toLowerCase();
+    return this.data.users.filter(u => u && String(u.role).trim().toLowerCase() === cleanRole);
   }
 
   getUserById(userId) {
-    return this.data.users.find(u => u.user_id === userId);
+    if (!userId) return null;
+    const cleanId = String(userId).trim().toLowerCase();
+    return this.data.users.find(u => {
+      if (!u) return false;
+      if (u.user_id && String(u.user_id).trim().toLowerCase() === cleanId) return true;
+      if (u.id && String(u.id).trim().toLowerCase() === cleanId) return true;
+      if (u.username && String(u.username).trim().toLowerCase() === cleanId) return true;
+      return false;
+    }) || null;
   }
 
   getUserByQrToken(token) {
@@ -1225,14 +1244,34 @@ class EduExamDB {
   }
 
   deleteUser(userId) {
-    this.data.users = this.data.users.filter(u => u.user_id !== userId);
+    if (!userId) return false;
+    const cleanId = String(userId).trim().toLowerCase();
+    const targetUser = this.getUserById(userId);
+    const targetUsername = targetUser ? String(targetUser.username).trim().toLowerCase() : '';
+
+    const initialLen = this.data.users.length;
+    this.data.users = this.data.users.filter(u => {
+      if (!u) return false;
+      const uId = u.user_id ? String(u.user_id).trim().toLowerCase() : '';
+      const uid2 = u.id ? String(u.id).trim().toLowerCase() : '';
+      const uName = u.username ? String(u.username).trim().toLowerCase() : '';
+      if (uId === cleanId || uid2 === cleanId) return false;
+      if (targetUsername && uName === targetUsername) return false;
+      return true;
+    });
     this.save();
 
     if (this.supabase) {
-      this.supabase.from('tb_users').delete().eq('user_id', this.ensureUUID(userId)).catch(err => this.handleSupabaseError('tb_users delete catch', err));
+      const uuidToDelete = this.ensureUUID(userId);
+      this.supabase.from('tb_users').delete().eq('user_id', uuidToDelete)
+        .catch(err => this.handleSupabaseError('tb_users delete catch', err));
+      if (targetUsername) {
+        this.supabase.from('tb_users').delete().eq('username', targetUsername)
+          .catch(err => this.handleSupabaseError('tb_users delete by username catch', err));
+      }
     }
 
-    return true;
+    return this.data.users.length < initialLen;
   }
 
   // ==================== MATA PELAJARAN MANAGEMENT (tb_subjects - BLUEPRINT v15.0) ====================
@@ -1699,7 +1738,7 @@ class EduExamDB {
   updateTeacherMapping(userId, mappingData = {}, operatorUser = null) {
     const user = this.getUserById(userId);
     if (!user) throw new Error('Pengguna tidak ditemukan!');
-    if (user.role !== 'guru') throw new Error('Pengguna bukan bertipe Guru!');
+    if (String(user.role).toLowerCase() !== 'guru') throw new Error('Pengguna bukan bertipe Guru!');
 
     if (Array.isArray(mappingData.mata_pelajaran_list)) {
       user.mata_pelajaran_list = mappingData.mata_pelajaran_list.filter(Boolean);
@@ -1711,6 +1750,21 @@ class EduExamDB {
     }
     this.addAuditLog('UPDATE_TEACHER_MAPPING', `Memperbarui pemetaan mapel & kelas untuk Guru: "${user.nama_lengkap}"`, operatorUser);
     this.save();
+
+    // Pastikan session aktif ikut terupdate jika pengguna yang diedit sedang login
+    if (typeof window !== 'undefined' && window.App && window.App.currentUser) {
+      const curId = String(window.App.currentUser.user_id || '').toLowerCase();
+      const targetId = String(user.user_id || '').toLowerCase();
+      if (curId === targetId || (window.App.currentUser.username === user.username)) {
+        window.App.currentUser.mata_pelajaran_list = user.mata_pelajaran_list;
+        window.App.currentUser.kelas_diampu_list = user.kelas_diampu_list;
+        window.App.currentUser.mapel = user.mapel;
+        window.App.currentUser.kelas = user.kelas;
+        try {
+          localStorage.setItem('eduexam_auth_session', JSON.stringify(window.App.currentUser));
+        } catch (e) {}
+      }
+    }
 
     // Supabase Cloud sync tb_users
     if (this.supabase) {
