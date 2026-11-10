@@ -220,7 +220,38 @@ class EduExamDB {
       console.log('🌐 EduExamDB: Supabase Client terpasang.');
       if (typeof window !== 'undefined') {
         setTimeout(() => this.syncFromSupabase(), 300);
+        this.initRealtimeSubscription();
       }
+    }
+  }
+
+  initRealtimeSubscription() {
+    if (!this.supabase || typeof window === 'undefined' || this._realtimeSubscribed) return;
+    try {
+      this._realtimeSubscribed = true;
+      const channel = this.supabase.channel('eduexam-cross-device-sync');
+      const tables = ['tb_classes', 'tb_subjects', 'tb_users', 'tb_questions', 'tb_assessments', 'tb_student_results'];
+      
+      tables.forEach(tableName => {
+        channel.on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+          console.log(`⚡ [Realtime Sync] Pembaruan cloud pada ${tableName}:`, payload.eventType);
+          this.syncFromSupabase().then(() => {
+            if (window.AdminModule && window.App && window.App.currentView === 'admin') {
+              window.AdminModule.switchTab(window.AdminModule.currentTab || 'classes-students');
+            } else if (window.GuruModule && window.App && window.App.currentView === 'guru') {
+              window.GuruModule.renderGuruView();
+            }
+          });
+        });
+      });
+
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('⚡ EduExam Realtime channel tersambung multi-perangkat!');
+        }
+      });
+    } catch (e) {
+      console.warn('Realtime subscription:', e.message);
     }
   }
 
@@ -298,6 +329,34 @@ class EduExamDB {
       if (!this.supabase) return false;
     }
     let anySuccess = false;
+
+    // 0. Sync tb_classes
+    try {
+      const { data: remoteClasses, error: clsErr } = await this.supabase
+        .from('tb_classes')
+        .select('*');
+
+      if (!clsErr && Array.isArray(remoteClasses)) {
+        this.handleSupabaseSuccess('tb_classes fetch');
+        anySuccess = true;
+        if (!this.data.classes) this.data.classes = [];
+        remoteClasses.forEach(rc => {
+          const exists = this.data.classes.find(c => c.class_id === rc.class_id || c.nama_kelas.toLowerCase().trim() === rc.nama_kelas.toLowerCase().trim());
+          if (!exists) {
+            this.data.classes.push({
+              class_id: rc.class_id,
+              nama_kelas: rc.nama_kelas,
+              tingkat: rc.tingkat || (rc.nama_kelas.startsWith('XII') ? 'XII' : rc.nama_kelas.startsWith('XI') ? 'XI' : 'X'),
+              jurusan: rc.jurusan || (rc.nama_kelas.includes('MIPA') ? 'MIPA' : rc.nama_kelas.includes('IPS') ? 'IPS' : 'Umum'),
+              wali_kelas: rc.wali_kelas || '-'
+            });
+          }
+        });
+        this.save();
+      }
+    } catch (e) {
+      this.handleSupabaseError('tb_classes catch', e);
+    }
 
     // 1. Sync tb_subjects
     try {
@@ -1415,8 +1474,9 @@ class EduExamDB {
       throw new Error(`Kelas "${namaKelas}" sudah terdaftar!`);
     }
 
+    const cId = classData.class_id ? this.ensureUUID(classData.class_id) : this.generateUUID();
     const newClass = {
-      class_id: 'cls-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      class_id: cId,
       nama_kelas: namaKelas,
       tingkat: classData.tingkat || (namaKelas.startsWith('XII') ? 'XII' : namaKelas.startsWith('XI') ? 'XI' : 'X'),
       jurusan: classData.jurusan || (namaKelas.includes('MIPA') ? 'MIPA' : namaKelas.includes('IPS') ? 'IPS' : 'Umum'),
@@ -1424,6 +1484,19 @@ class EduExamDB {
     };
     classes.push(newClass);
     this.save();
+
+    // Supabase Cloud direct persistence
+    if (this.supabase) {
+      this.supabase.from('tb_classes').insert({
+        class_id: newClass.class_id,
+        nama_kelas: newClass.nama_kelas,
+        tingkat: newClass.tingkat,
+        jurusan: newClass.jurusan,
+        wali_kelas: newClass.wali_kelas,
+        created_at: new Date().toISOString()
+      }).catch(err => this.handleSupabaseError('tb_classes insert catch', err));
+    }
+
     return newClass;
   }
 
@@ -1451,16 +1524,39 @@ class EduExamDB {
     }
 
     this.save();
+
+    // Supabase Cloud direct update
+    if (this.supabase) {
+      this.supabase.from('tb_classes').update({
+        nama_kelas: newName,
+        tingkat: classes[idx].tingkat,
+        jurusan: classes[idx].jurusan,
+        wali_kelas: classes[idx].wali_kelas
+      }).eq('class_id', this.ensureUUID(classId))
+        .catch(err => this.handleSupabaseError('tb_classes update catch', err));
+    }
+
     return classes[idx];
   }
 
   deleteClass(classId) {
     const classes = this.getClasses();
-    const cls = classes.find(c => c.class_id === classId);
+    const cls = classes.find(c => c.class_id === classId || c.nama_kelas === classId);
     if (!cls) return false;
 
-    this.data.classes = classes.filter(c => c.class_id !== classId);
+    this.data.classes = classes.filter(c => c.class_id !== cls.class_id);
     this.save();
+
+    // Supabase Cloud direct delete
+    if (this.supabase) {
+      if (this.isUUID(cls.class_id)) {
+        this.supabase.from('tb_classes').delete().eq('class_id', cls.class_id)
+          .catch(err => this.handleSupabaseError('tb_classes delete catch', err));
+      }
+      this.supabase.from('tb_classes').delete().eq('nama_kelas', cls.nama_kelas)
+        .catch(err => this.handleSupabaseError('tb_classes delete by name catch', err));
+    }
+
     return true;
   }
 

@@ -34,7 +34,17 @@ CREATE TABLE IF NOT EXISTS public.tb_subjects (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. TABEL ASESMEN (tb_assessments) - Formatif vs Sumatif
+-- 3. TABEL KELAS (tb_classes) - Full CRUD Kelas Sekolah
+CREATE TABLE IF NOT EXISTS public.tb_classes (
+  class_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nama_kelas TEXT NOT NULL UNIQUE,
+  tingkat TEXT,
+  jurusan TEXT,
+  wali_kelas TEXT,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4. TABEL ASESMEN (tb_assessments) - Formatif vs Sumatif
 CREATE TABLE IF NOT EXISTS public.tb_assessments (
   assessment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID REFERENCES public.tb_users(user_id) ON DELETE SET NULL,
@@ -46,7 +56,7 @@ CREATE TABLE IF NOT EXISTS public.tb_assessments (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. TABEL BANK SOAL (tb_questions) - Multi-tipe soal 1-5
+-- 5. TABEL BANK SOAL (tb_questions) - Multi-tipe soal 1-5
 CREATE TABLE IF NOT EXISTS public.tb_questions (
   question_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_id UUID REFERENCES public.tb_assessments(assessment_id) ON DELETE CASCADE,
@@ -62,7 +72,7 @@ CREATE TABLE IF NOT EXISTS public.tb_questions (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 5. TABEL JADWAL SUMATIF TERPUSAT (tb_exam_schedules) - Kontrol Aktivasi Terpusat Admin
+-- 6. TABEL JADWAL SUMATIF TERPUSAT (tb_exam_schedules) - Kontrol Aktivasi Terpusat Admin
 CREATE TABLE IF NOT EXISTS public.tb_exam_schedules (
   schedule_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_id UUID REFERENCES public.tb_assessments(assessment_id) ON DELETE CASCADE,
@@ -76,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.tb_exam_schedules (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. TABEL HASIL PENILAIAN SISWA (tb_student_results)
+-- 7. TABEL HASIL PENILAIAN SISWA (tb_student_results)
 CREATE TABLE IF NOT EXISTS public.tb_student_results (
   result_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES public.tb_users(user_id) ON DELETE CASCADE,
@@ -89,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.tb_student_results (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. TABEL REFLEKSI AI GURU & SUPERVISI (tb_ai_reflections)
+-- 8. TABEL REFLEKSI AI GURU & SUPERVISI (tb_ai_reflections)
 CREATE TABLE IF NOT EXISTS public.tb_ai_reflections (
   reflection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_id UUID REFERENCES public.tb_assessments(assessment_id) ON DELETE CASCADE,
@@ -100,7 +110,7 @@ CREATE TABLE IF NOT EXISTS public.tb_ai_reflections (
   created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 8. TABEL ARSIP BERKAS & GAMBAR GURU (tb_archives)
+-- 9. TABEL ARSIP BERKAS & GAMBAR GURU (tb_archives)
 CREATE TABLE IF NOT EXISTS public.tb_archives (
   archive_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID REFERENCES public.tb_users(user_id) ON DELETE CASCADE,
@@ -113,6 +123,7 @@ CREATE TABLE IF NOT EXISTS public.tb_archives (
 -- ==============================================================================
 ALTER TABLE public.tb_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tb_subjects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tb_classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tb_assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tb_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tb_exam_schedules ENABLE ROW LEVEL SECURITY;
@@ -126,6 +137,9 @@ CREATE POLICY "Akses Penuh EduExam tb_users" ON public.tb_users FOR ALL TO anon,
 
 DROP POLICY IF EXISTS "Akses Penuh EduExam tb_subjects" ON public.tb_subjects;
 CREATE POLICY "Akses Penuh EduExam tb_subjects" ON public.tb_subjects FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Akses Penuh EduExam tb_classes" ON public.tb_classes;
+CREATE POLICY "Akses Penuh EduExam tb_classes" ON public.tb_classes FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Akses Penuh EduExam tb_assessments" ON public.tb_assessments;
 CREATE POLICY "Akses Penuh EduExam tb_assessments" ON public.tb_assessments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
@@ -144,6 +158,41 @@ CREATE POLICY "Akses Penuh EduExam tb_ai_reflections" ON public.tb_ai_reflection
 
 DROP POLICY IF EXISTS "Akses Penuh EduExam tb_archives" ON public.tb_archives;
 CREATE POLICY "Akses Penuh EduExam tb_archives" ON public.tb_archives FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+-- ==============================================================================
+-- AKTIFKAN SUPABASE REALTIME REPLICATION UNTUK SELURUH TABEL
+-- Memastikan perubahan di Laptop langsung muncul di HP / Tablet secara live
+-- ==============================================================================
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_classes;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_subjects;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_users;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_questions;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_assessments;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_exam_schedules;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.tb_student_results;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+END $$;
 
 -- ==============================================================================
 -- INISIALISASI DATA AWAL (DEFAULT ADMIN UTAMA)
@@ -174,4 +223,3 @@ ON CONFLICT (user_id) DO UPDATE SET
   password_hash = EXCLUDED.password_hash,
   role = EXCLUDED.role,
   nama_lengkap = EXCLUDED.nama_lengkap;
-
