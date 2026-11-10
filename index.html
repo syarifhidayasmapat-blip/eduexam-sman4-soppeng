@@ -1787,14 +1787,14 @@
   </div>
 
   <!-- ==================== SCRIPTS ==================== -->
-  <script src="js/supabaseClient.js?v=18.0"></script>
-  <script src="js/db.js?v=18.0"></script>
-  <script src="js/ai-engine.js?v=18.0"></script>
-  <script src="js/exam-engine.js?v=18.0"></script>
-  <script src="js/admin.js?v=18.0"></script>
-  <script src="js/guru.js?v=18.0"></script>
-  <script src="js/kepsek.js?v=18.0"></script>
-  <script src="js/app.js?v=18.0"></script>
+  <script src="js/supabaseClient.js?v=19.0"></script>
+  <script src="js/db.js?v=19.0"></script>
+  <script src="js/ai-engine.js?v=19.0"></script>
+  <script src="js/exam-engine.js?v=19.0"></script>
+  <script src="js/admin.js?v=19.0"></script>
+  <script src="js/guru.js?v=19.0"></script>
+  <script src="js/kepsek.js?v=19.0"></script>
+  <script src="js/app.js?v=19.0"></script>
 
   <!-- ==================== PWA SERVICE WORKER REGISTRATION ==================== -->
   <script>
@@ -1802,16 +1802,15 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
           .then((registration) => {
-            console.log('[EduExam PWA] Service Worker terdaftar sukses dengan scope:', registration.scope);
+            console.log('[EduExam PWA] Service Worker v19.0 terdaftar sukses dengan scope:', registration.scope);
+            // Paksa pembaruan berkala/saat buka halaman agar HP & Laptop selalu memuat skrip teranyar
+            registration.update();
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
               if (installingWorker) {
                 installingWorker.onstatechange = () => {
                   if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('[EduExam PWA] Versi baru EduExam tersedia dan siap digunakan.');
-                    if (window.App && window.App.showToast) {
-                      window.App.showToast('Versi baru EduExam terdeteksi dan diperbarui di latar belakang!', 'info');
-                    }
+                    installingWorker.postMessage({ action: 'SKIP_WAITING' });
                   }
                 };
               }

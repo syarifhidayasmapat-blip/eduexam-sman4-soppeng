@@ -96,6 +96,8 @@ class EduExamDB {
   }
 
   init() {
+    this._loadTombstones();
+    this._lastLocalMutation = 0;
     let raw = localStorage.getItem(DB_KEY);
 
     if (!raw) {
@@ -261,6 +263,34 @@ class EduExamDB {
     } catch (e) {}
   }
 
+  _loadTombstones() {
+    try {
+      const raw = localStorage.getItem('eduexam_tombstones');
+      const data = raw ? JSON.parse(raw) : {};
+      this._deletedClassNames = new Set(data.classes || []);
+      this._deletedSubjectNames = new Set(data.subjects || []);
+      this._deletedUserIds = new Set(data.users || []);
+    } catch (e) {
+      this._deletedClassNames = new Set();
+      this._deletedSubjectNames = new Set();
+      this._deletedUserIds = new Set();
+    }
+  }
+
+  _saveTombstones() {
+    try {
+      localStorage.setItem('eduexam_tombstones', JSON.stringify({
+        classes: Array.from(this._deletedClassNames || []),
+        subjects: Array.from(this._deletedSubjectNames || []),
+        users: Array.from(this._deletedUserIds || [])
+      }));
+    } catch (e) {}
+  }
+
+  markMutation() {
+    this._lastLocalMutation = Date.now();
+  }
+
   initRealtimeSubscription() {
     if (!this.supabase || typeof window === 'undefined' || this._realtimeSubscribed) return;
     try {
@@ -268,16 +298,26 @@ class EduExamDB {
       const channel = this.supabase.channel('eduexam-cross-device-sync');
       const tables = ['tb_classes', 'tb_subjects', 'tb_users', 'tb_questions', 'tb_assessments', 'tb_student_results'];
       
+      let debounceTimer = null;
       tables.forEach(tableName => {
         channel.on('postgres_changes', { event: '*', schema: 'public', table: tableName }, (payload) => {
+          // Abaikan echo realtime dari mutasi lokal sendiri dalam 2.5 detik terakhir untuk mencegah race condition
+          if (this._lastLocalMutation && (Date.now() - this._lastLocalMutation < 2500)) {
+            console.log(`⚡ [Realtime Sync] Mengabaikan echo lokal pada ${tableName}`);
+            return;
+          }
+
           console.log(`⚡ [Realtime Sync] Pembaruan cloud pada ${tableName}:`, payload.eventType);
-          this.syncFromSupabase().then(() => {
-            if (window.AdminModule && window.App && window.App.currentView === 'admin') {
-              window.AdminModule.switchTab(window.AdminModule.currentTab || 'classes-students');
-            } else if (window.GuruModule && window.App && window.App.currentView === 'guru') {
-              window.GuruModule.renderGuruView();
-            }
-          });
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            this.syncFromSupabase().then(() => {
+              if (window.AdminModule && window.App && window.App.currentView === 'admin') {
+                window.AdminModule.switchTab(window.AdminModule.currentTab || 'classes-students');
+              } else if (window.GuruModule && window.App && window.App.currentView === 'guru') {
+                window.GuruModule.renderGuruView();
+              }
+            });
+          }, 300);
         });
       });
 
@@ -495,15 +535,34 @@ class EduExamDB {
                     });
                   }
                 });
+
+                // RECONCILIATION: Pastikan kelas yang ada di tombstones TIDAK PERNAH muncul lagi
+                if (this._deletedClassNames && this._deletedClassNames.size > 0) {
+                  this.data.classes = this.data.classes.filter(c => {
+                    const cName = (c.nama_kelas || '').trim().toLowerCase();
+                    const cId = (c.class_id || '').trim().toLowerCase();
+                    return !this._deletedClassNames.has(cName) && !this._deletedClassNames.has(cId);
+                  });
+                }
               }
             }
           });
+
+          // RECONCILIATION USERS: Hapus pengguna lokal yang tercatat di tombstones
+          if (this._deletedUserIds && this._deletedUserIds.size > 0) {
+            this.data.users = (this.data.users || []).filter(u => {
+              const uId = String(u.user_id || '').trim().toLowerCase();
+              const uName = String(u.username || '').trim().toLowerCase();
+              return !this._deletedUserIds.has(uId) && !this._deletedUserIds.has(uName);
+            });
+          }
+
           this.save();
 
-          // Jika perangkat lokal (Laptop) memiliki kelas tapi cloud admin masih kosong, auto-upload ke cloud!
+          // Hanya upload awal jika basis data cloud admin BENAR-BENAR MASIH KOSONG
           const localClassCount = (this.data.classes || []).length;
           const cloudClassCount = Array.isArray(adminCloudClasses) ? adminCloudClasses.length : 0;
-          if (localClassCount > cloudClassCount) {
+          if (cloudClassCount === 0 && localClassCount > 0) {
             this.syncClassesToCloud();
           }
         }
@@ -1318,13 +1377,29 @@ class EduExamDB {
       throw new Error('Akun Admin Default Utama SMAN 4 Soppeng (sman4soppeng@gmail.com) dilindungi dan tidak dapat dihapus!');
     }
 
+    this.markMutation();
+    if (!this._deletedUserIds) this._deletedUserIds = new Set();
+    this._deletedUserIds.add(String(adminUserId).trim().toLowerCase());
+    if (target.username) this._deletedUserIds.add(String(target.username).trim().toLowerCase());
+    this._saveTombstones();
+
     this.data.users = this.data.users.filter(u => u.user_id !== adminUserId);
     this.save();
     this.addAuditLog('DELETE_ADMIN', `Menghapus akun Admin: ${target.nama_lengkap} (${target.username})`, operatorUser);
+
+    if (this.supabase) {
+      if (this.isUUID(adminUserId)) {
+        this.supabase.from('tb_users').delete().eq('user_id', adminUserId).catch(() => {});
+      }
+      if (target.username) {
+        this.supabase.from('tb_users').delete().eq('username', target.username).catch(() => {});
+      }
+    }
     return true;
   }
 
   addUser(userData) {
+    this.markMutation();
     const role = userData.role || 'siswa';
     let qrToken = userData.qr_auth_token;
     if (role === 'siswa' && !qrToken) {
@@ -1348,6 +1423,7 @@ class EduExamDB {
     if (this._deletedUserIds) {
       this._deletedUserIds.delete(String(uId).toLowerCase());
       if (newUser.username) this._deletedUserIds.delete(String(newUser.username).toLowerCase());
+      this._saveTombstones();
     }
 
     // Supabase Cloud sync tb_users
@@ -1370,6 +1446,7 @@ class EduExamDB {
   }
 
   updateUser(userId, updatedFields) {
+    this.markMutation();
     const idx = this.data.users.findIndex(u => u.user_id === userId);
     if (idx !== -1) {
       this.data.users[idx] = { ...this.data.users[idx], ...updatedFields };
@@ -1398,6 +1475,7 @@ class EduExamDB {
 
   deleteUser(userId) {
     if (!userId) return false;
+    this.markMutation();
     const cleanId = String(userId).trim().toLowerCase();
     const targetUser = this.getUserById(userId);
     const targetUsername = targetUser ? String(targetUser.username).trim().toLowerCase() : '';
@@ -1418,6 +1496,7 @@ class EduExamDB {
     if (!this._deletedUserIds) this._deletedUserIds = new Set();
     this._deletedUserIds.add(cleanId);
     if (targetUsername) this._deletedUserIds.add(targetUsername);
+    this._saveTombstones();
 
     if (this.supabase) {
       if (this.isUUID(userId)) {
@@ -1452,6 +1531,7 @@ class EduExamDB {
   }
 
   addSubject(subjectData, operatorUser = null) {
+    this.markMutation();
     const subjects = this.getSubjects();
     const namaMapel = (subjectData.nama_mapel || '').trim();
     if (!namaMapel) throw new Error('Nama mata pelajaran wajib diisi!');
@@ -1459,6 +1539,12 @@ class EduExamDB {
     const existing = this.getSubjectByName(namaMapel);
     if (existing) {
       throw new Error(`Mata pelajaran "${namaMapel}" sudah terdaftar!`);
+    }
+
+    // Jika sebelumnya pernah dihapus, buka blokirnya
+    if (this._deletedSubjectNames) {
+      this._deletedSubjectNames.delete(namaMapel.toLowerCase().trim());
+      this._saveTombstones();
     }
 
     // Buat kode mapel otomatis jika kosong
@@ -1501,6 +1587,7 @@ class EduExamDB {
   }
 
   deleteSubject(subjectId, operatorUser = null) {
+    this.markMutation();
     const subjects = this.getSubjects();
     const cleanId = String(subjectId || '').trim();
     const target = subjects.find(s => s.subject_id === cleanId || s.nama_mapel.toLowerCase().trim() === cleanId.toLowerCase());
@@ -1513,6 +1600,8 @@ class EduExamDB {
     // Catat mapel yang dihapus agar tidak direstore oleh background sync
     if (!this._deletedSubjectNames) this._deletedSubjectNames = new Set();
     this._deletedSubjectNames.add(removedName.toLowerCase().trim());
+    if (removedId) this._deletedSubjectNames.add(String(removedId).toLowerCase().trim());
+    this._saveTombstones();
 
     // Otomatis bersihkan mapel dari assignment guru (mata_pelajaran_list & mapel)
     if (Array.isArray(this.data.users)) {
@@ -1576,6 +1665,7 @@ class EduExamDB {
   }
 
   addClass(classData) {
+    this.markMutation();
     const classes = this.getClasses();
     const namaKelas = (classData.nama_kelas || '').trim();
     if (!namaKelas) throw new Error('Nama kelas wajib diisi!');
@@ -1588,6 +1678,7 @@ class EduExamDB {
     // Jika sebelumnya pernah dihapus dalam sesi ini, buka blokirnya
     if (this._deletedClassNames) {
       this._deletedClassNames.delete(namaKelas.toLowerCase().trim());
+      this._saveTombstones();
     }
 
     const cId = classData.class_id ? this.ensureUUID(classData.class_id) : this.generateUUID();
@@ -1610,6 +1701,7 @@ class EduExamDB {
   }
 
   updateClass(classId, updateData) {
+    this.markMutation();
     const classes = this.getClasses();
     const idx = classes.findIndex(c => c.class_id === classId || c.nama_kelas === classId);
     if (idx === -1) throw new Error('Kelas tidak ditemukan!');
@@ -1643,6 +1735,7 @@ class EduExamDB {
   }
 
   deleteClass(classId) {
+    this.markMutation();
     const classes = this.getClasses();
     const cleanId = String(classId || '').trim();
     const cls = this.getClassById(classId) || classes.find(c => 
@@ -1665,6 +1758,7 @@ class EduExamDB {
     if (!this._deletedClassNames) this._deletedClassNames = new Set();
     this._deletedClassNames.add(removedName.toLowerCase().trim());
     if (removedId) this._deletedClassNames.add(String(removedId).toLowerCase().trim());
+    this._saveTombstones();
 
     // Supabase Cloud direct delete & sync
     if (this.supabase) {
@@ -1739,9 +1833,21 @@ class EduExamDB {
 
   deleteStudentsBulk(userIds) {
     if (!Array.isArray(userIds) || userIds.length === 0) return 0;
+    this.markMutation();
     const initialLen = this.data.users.length;
+    if (!this._deletedUserIds) this._deletedUserIds = new Set();
+    userIds.forEach(id => {
+      this._deletedUserIds.add(String(id).trim().toLowerCase());
+    });
+    this._saveTombstones();
+
     this.data.users = this.data.users.filter(u => !userIds.includes(u.user_id));
     this.save();
+
+    if (this.supabase) {
+      this.supabase.from('tb_users').delete().in('user_id', userIds).catch(() => {});
+    }
+
     return initialLen - this.data.users.length;
   }
 
@@ -1950,6 +2056,7 @@ class EduExamDB {
 
   // --- PEMETAAN MULTI-MAPEL & MULTI-KELAS GURU (BLUEPRINT v14.0) ---
   updateTeacherMapping(userId, mappingData = {}, operatorUser = null) {
+    this.markMutation();
     const user = this.getUserById(userId);
     if (!user) throw new Error('Pengguna tidak ditemukan!');
     if (String(user.role).toLowerCase() !== 'guru') throw new Error('Pengguna bukan bertipe Guru!');

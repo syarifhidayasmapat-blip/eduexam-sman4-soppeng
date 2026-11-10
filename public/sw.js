@@ -5,7 +5,7 @@
  * Pengembang: Syarif Hidayatullah, S.Pd.
  */
 
-const CACHE_NAME = 'eduexam-pwa-v18.0';
+const CACHE_NAME = 'eduexam-pwa-v19.0';
 
 // Daftar aset inti yang di-precached saat instalasi Service Worker
 const PRECACHE_ASSETS = [
@@ -26,11 +26,6 @@ const PRECACHE_ASSETS = [
   '/assets/logo.png',
   '/icon-192.png',
   '/icon-512.png'
-];
-
-// Ekstensi aset statis lokal yang di-cache
-const STATIC_EXTENSIONS = [
-  '.html', '.css', '.js', '.json', '.png', '.jpg', '.jpeg', '.svg', '.ico', '.woff2', '.woff', '.ttf'
 ];
 
 // Host CDN yang diizinkan untuk dynamic caching
@@ -138,22 +133,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // C. STRATEGI UNTUK ASET STATIS LOKAL: Stale-While-Revalidate
+  // C. STRATEGI UNTUK ASET STATIS LOKAL (JS/CSS/ASSETS): Network-First dengan Cache Fallback
+  // Menjamin perubahan logika, modul admin, dan pembaruan database seketika aktif tanpa tertahan cache lama
   const isLocalAsset = url.origin === self.location.origin;
   if (isLocalAsset) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request).then((networkResponse) => {
+      fetch(request)
+        .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           }
           return networkResponse;
-        }).catch(() => null);
-
-        // Jika ada di cache, kembalikan langsung; request jaringan memperbarui cache di latar belakang
-        return cachedResponse || fetchPromise;
-      })
+        })
+        .catch(async () => {
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) return cachedResponse;
+          return new Response('Aset EduExam sedang offline dan belum tercache.', { status: 503 });
+        })
     );
     return;
   }

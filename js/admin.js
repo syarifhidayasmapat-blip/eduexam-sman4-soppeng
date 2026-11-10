@@ -411,7 +411,7 @@ class AdminController {
                         ${s.created_at ? new Date(s.created_at).toLocaleDateString('id-ID') : '-'}
                       </td>
                       <td class="py-3 px-4 text-center">
-                        <button onclick="window.AdminModule.deleteSubject('${s.subject_id}', '${s.nama_mapel}')" class="px-2.5 py-1.5 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 font-bold text-xs inline-flex items-center gap-1 transition" title="Hapus Mata Pelajaran">
+                        <button onclick="window.AdminModule.deleteSubject('${s.subject_id}', '${(s.nama_mapel || '').replace(/'/g, "\\'")}', event)" class="px-2.5 py-1.5 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 font-bold text-xs inline-flex items-center gap-1 transition" title="Hapus Mata Pelajaran">
                           <i class="fa-regular fa-trash-can"></i> Hapus
                         </button>
                       </td>
@@ -448,13 +448,24 @@ class AdminController {
     }
   }
 
-  deleteSubject(subjectId, subjectNameFallback = '') {
+  deleteSubject(subjectId, subjectNameFallback = '', event = null) {
     const sbj = window.EduDB.getSubjectById ? window.EduDB.getSubjectById(subjectId) : null;
     const targetName = sbj ? sbj.nama_mapel : (subjectNameFallback || subjectId);
     const targetId = sbj ? sbj.subject_id : subjectId;
     if (!targetName) return;
 
     if (confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${targetName}"? Tindakan ini akan menghapus mapel dari master data sistem.`)) {
+      // 1. Direct Instant Visual Removal (0ms Feedback)
+      try {
+        const btn = event ? (event.currentTarget || event.target) : null;
+        const row = btn ? btn.closest('tr') : null;
+        if (row) {
+          row.style.transition = 'all 0.15s ease-out';
+          row.style.opacity = '0';
+          setTimeout(() => row.remove(), 150);
+        }
+      } catch (e) {}
+
       try {
         const operator = window.App?.currentUser;
         window.EduDB.deleteSubject(targetId || targetName, operator);
@@ -534,7 +545,7 @@ class AdminController {
                           <i class="fa-solid fa-lock text-xs"></i> Akun Utama Dilindungi
                         </span>
                       ` : `
-                        <button onclick="window.AdminModule.deleteAdmin('${adm.user_id}')" class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition border border-red-200 inline-flex items-center gap-1.5">
+                        <button onclick="window.AdminModule.deleteAdmin('${adm.user_id}', event)" class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition border border-red-200 inline-flex items-center gap-1.5">
                           <i class="fa-solid fa-trash-can"></i> Hapus Admin
                         </button>
                       `}
@@ -589,12 +600,24 @@ class AdminController {
     }
   }
 
-  deleteAdmin(adminUserId) {
+  deleteAdmin(adminUserId, event = null) {
     const target = window.EduDB.getUserById(adminUserId);
     if (!target) return;
     if (!confirm(`Konfirmasi Penghapusan: Apakah Anda yakin ingin mencabut dan menghapus akun Admin "${target.nama_lengkap}" (${target.username})?`)) {
       return;
     }
+
+    // Direct Instant Visual Removal (0ms Feedback)
+    try {
+      const btn = event ? (event.currentTarget || event.target) : null;
+      const row = btn ? btn.closest('tr') : null;
+      if (row) {
+        row.style.transition = 'all 0.15s ease-out';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 150);
+      }
+    } catch (e) {}
+
     try {
       const operator = window.App ? window.App.currentUser : null;
       window.EduDB.deleteAdminUser(adminUserId, operator);
@@ -846,7 +869,7 @@ class AdminController {
                       <button onclick="window.AdminModule.openEditClassModal('${c.class_id}')" class="p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition" title="Edit Kelas">
                         <i class="fa-solid fa-pen-to-square text-xs"></i>
                       </button>
-                      <button onclick="window.AdminModule.deleteClass('${c.class_id || ''}', '${c.nama_kelas}')" class="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition" title="Hapus Kelas">
+                      <button onclick="window.AdminModule.deleteClass('${c.class_id || ''}', '${(c.nama_kelas || '').replace(/'/g, "\\'")}', event)" class="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition" title="Hapus Kelas">
                         <i class="fa-solid fa-trash-can text-xs"></i>
                       </button>
                     </div>
@@ -878,7 +901,7 @@ class AdminController {
               <!-- Bulk Delete Button (Point 1 User Request) -->
               <div class="flex items-center gap-2">
                 ${this.selectedStudentIds.size > 0 ? `
-                  <button onclick="window.AdminModule.deleteSelectedStudents()" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 animate-pulse">
+                  <button onclick="window.AdminModule.deleteSelectedStudents(event)" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 animate-pulse">
                     <i class="fa-solid fa-trash-can"></i> Hapus Siswa Terpilih (${this.selectedStudentIds.size})
                   </button>
                 ` : `
@@ -945,7 +968,7 @@ class AdminController {
                             <button onclick="window.AdminModule.simulateAutoLogin('${s.qr_auth_token}')" class="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition" title="Simulasikan Auto-Login Siswa Ini">
                               <i class="fa-solid fa-right-to-bracket"></i>
                             </button>
-                            <button onclick="window.AdminModule.deleteStudent('${s.user_id}')" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Hapus Siswa">
+                            <button onclick="window.AdminModule.deleteStudent('${s.user_id}', event)" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="Hapus Siswa">
                               <i class="fa-regular fa-trash-can"></i>
                             </button>
                           </div>
@@ -1054,13 +1077,25 @@ class AdminController {
     }
   }
 
-  deleteClass(classId, classNameFallback = '') {
+  deleteClass(classId, classNameFallback = '', event = null) {
     const cls = window.EduDB.getClassById(classId) || (classNameFallback ? window.EduDB.getClassByName(classNameFallback) : null);
     const targetName = cls ? cls.nama_kelas : (classNameFallback || classId);
     const targetId = cls ? cls.class_id : classId;
     if (!targetName) return;
 
     if (confirm(`Apakah Anda yakin ingin menghapus kelas "${targetName}"? Siswa yang berada di kelas ini tidak akan terhapus, namun referensi kelasnya perlu diperbarui.`)) {
+      // 1. Direct Instant Visual Removal (0ms Feedback)
+      try {
+        const btn = event ? (event.currentTarget || event.target) : null;
+        const card = btn ? btn.closest('.rounded-xl.border') : null;
+        if (card) {
+          card.style.transition = 'all 0.15s ease-out';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.95)';
+          setTimeout(() => card.remove(), 150);
+        }
+      } catch (e) {}
+
       window.EduDB.deleteClass(targetId || targetName);
       if (this.studentClassFilter === targetName) {
         this.studentClassFilter = 'ALL';
@@ -1127,11 +1162,22 @@ class AdminController {
     }
   }
 
-  deleteStudent(userId) {
+  deleteStudent(userId, event = null) {
     const student = window.EduDB.getUserById(userId);
     if (!student) return;
 
     if (confirm(`Apakah Anda yakin ingin menghapus siswa "${student.nama_lengkap}" (NIS: ${student.nis})?`)) {
+      // 1. Direct Instant Visual Removal (0ms Feedback)
+      try {
+        const btn = event ? (event.currentTarget || event.target) : null;
+        const row = btn ? btn.closest('tr') : null;
+        if (row) {
+          row.style.transition = 'all 0.15s ease-out';
+          row.style.opacity = '0';
+          setTimeout(() => row.remove(), 150);
+        }
+      } catch (e) {}
+
       window.EduDB.deleteStudent(userId);
       this.selectedStudentIds.delete(userId);
       if (window.App) window.App.showToast(`Siswa "${student.nama_lengkap}" berhasil dihapus.`, 'info');
@@ -1160,7 +1206,7 @@ class AdminController {
     if (content) content.innerHTML = this._renderCurrentTabContent();
   }
 
-  deleteSelectedStudents() {
+  deleteSelectedStudents(event = null) {
     const count = this.selectedStudentIds.size;
     if (count === 0) return;
 
@@ -1918,7 +1964,7 @@ class AdminController {
                           <i class="fa-solid fa-chalkboard-user"></i> Petakan Mapel & Kelas
                         </button>
                       ` : ''}
-                      <button onclick="window.AdminModule.deleteUser('${u.user_id}', '${u.nama_lengkap || u.username}')" class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition" title="Hapus Pengguna">
+                      <button onclick="window.AdminModule.deleteUser('${u.user_id}', '${(displayName || '').replace(/'/g, "\\'")}', event)" class="p-2 rounded-lg text-red-600 hover:bg-red-50 transition" title="Hapus Pengguna">
                         <i class="fa-regular fa-trash-can"></i>
                       </button>
                     </td>
@@ -1940,7 +1986,7 @@ class AdminController {
     this.switchTab(this.currentTab || 'users');
   }
 
-  deleteUser(userId, nameFallback = '') {
+  deleteUser(userId, nameFallback = '', event = null) {
     const user = window.EduDB.getUserById(userId);
     const displayName = user ? (user.nama_lengkap || user.username) : (nameFallback || 'Pengguna');
     const targetRole = user ? user.role : 'pengguna';
@@ -1950,6 +1996,17 @@ class AdminController {
       return;
     }
     if (confirm(`Yakin ingin menghapus pengguna "${displayName}" (${targetRole})?`)) {
+      // 1. Direct Instant Visual Removal (0ms Feedback)
+      try {
+        const btn = event ? (event.currentTarget || event.target) : null;
+        const row = btn ? btn.closest('tr') : null;
+        if (row) {
+          row.style.transition = 'all 0.15s ease-out';
+          row.style.opacity = '0';
+          setTimeout(() => row.remove(), 150);
+        }
+      } catch (e) {}
+
       window.EduDB.deleteUser(userId);
       if (window.App) window.App.showToast(`Pengguna "${displayName}" berhasil dihapus!`, 'success');
       this.switchTab('users');

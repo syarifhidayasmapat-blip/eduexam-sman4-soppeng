@@ -134,6 +134,8 @@ if (window.EduDB.supabase) {
 } else {
   // Verify that _deletedClassNames prevents resurrection
   console.log('Deleted class tracked in _deletedClassNames:', window.EduDB._deletedClassNames.has('xi mipa 3'));
+  const storedTombstones = JSON.parse(global.localStorage.getItem('eduexam_tombstones') || '{}');
+  console.log('Tombstones successfully stored in localStorage:', storedTombstones.classes.includes('xi mipa 3'));
 }
 
 console.log('\n🎯 ALL TESTS PASSED: 100% Instant Reactivity & Delete Reliability Verified!');

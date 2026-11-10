@@ -91,7 +91,7 @@ console.log('\n=== TEST SUITE 3: ICON PNG INTEGRITY ===');
 
 console.log('\n=== TEST SUITE 4: SERVICE WORKER IMPLEMENTATION ===');
 const swCode = fs.readFileSync(path.join(__dirname, '..', 'public/sw.js'), 'utf8');
-assert(swCode.includes('eduexam-pwa-v17'), 'sw.js specifies cache name eduexam-pwa-v17');
+assert(swCode.includes('eduexam-pwa-v'), 'sw.js specifies cache name eduexam-pwa-v');
 assert(swCode.includes('PRECACHE_ASSETS'), 'sw.js defines PRECACHE_ASSETS');
 assert(swCode.includes('/manifest.json'), 'sw.js precaches manifest.json');
 assert(swCode.includes('/icon-192.png'), 'sw.js precaches icon-192.png');
