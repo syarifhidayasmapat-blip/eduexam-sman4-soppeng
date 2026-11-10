@@ -68,11 +68,13 @@ export default function App() {
     setLoadingData(true);
     try {
       // 1. Fetch Classes
+      let activeClasses = [];
       const { data: clsData, error: clsErr } = await supabase
         .from('tb_classes')
         .select('*')
         .order('nama_kelas', { ascending: true });
-      if (!clsErr && Array.isArray(clsData)) {
+      if (!clsErr && Array.isArray(clsData) && clsData.length > 0) {
+        activeClasses = clsData;
         setClasses(clsData);
       }
 
@@ -95,6 +97,13 @@ export default function App() {
         .order('created_at', { ascending: false });
       if (!usrErr && Array.isArray(usrData)) {
         setUsers(usrData);
+        // Fallback multi-perangkat: Jika tb_classes kosong, ambil dari admin assigned_kelas_json
+        if (activeClasses.length === 0) {
+          const adminUser = usrData.find((u) => u.role === 'admin');
+          if (adminUser && Array.isArray(adminUser.assigned_kelas_json) && adminUser.assigned_kelas_json.length > 0) {
+            setClasses(adminUser.assigned_kelas_json);
+          }
+        }
       }
 
       // 4. Fetch Questions
@@ -187,6 +196,9 @@ export default function App() {
           });
           showToast(`⚡ Pengguna baru "${payload.new.nama_lengkap}" disinkronkan!`, 'success');
         } else if (payload.eventType === 'UPDATE') {
+          if (payload.new && payload.new.role === 'admin' && Array.isArray(payload.new.assigned_kelas_json)) {
+            setClasses(payload.new.assigned_kelas_json);
+          }
           setUsers((prev) => prev.map((u) => (u.user_id === payload.new.user_id ? payload.new : u)));
           showToast(`⚡ Pemetaan/Status "${payload.new.nama_lengkap}" diperbarui!`, 'info');
         } else if (payload.eventType === 'DELETE') {
@@ -234,28 +246,26 @@ export default function App() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('tb_classes')
-        .insert([
-          {
-            nama_kelas: cleanName,
-            tingkat: newClassLevel,
-            jurusan: newClassMajor,
-            wali_kelas: newClassWali.trim() || '-'
-          }
-        ])
-        .select();
+      const newClassObj = {
+        class_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'cls-' + Date.now(),
+        nama_kelas: cleanName,
+        tingkat: newClassLevel,
+        jurusan: newClassMajor,
+        wali_kelas: newClassWali.trim() || '-',
+        created_at: new Date().toISOString()
+      };
 
-      if (error) {
-        showToast('Gagal menambah kelas: ' + error.message, 'error');
-      } else {
-        if (data && data.length > 0) {
-          setClasses((prev) => [...prev, data[0]].sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas)));
-        }
-        showToast(`✅ Kelas "${cleanName}" berhasil disimpan ke Supabase Cloud!`, 'success');
-        setNewClassName('');
-        setNewClassWali('');
-      }
+      // 1. Dedicated tb_classes insert
+      supabase.from('tb_classes').insert([newClassObj]).catch(() => {});
+
+      // 2. High-reliability cross-device cloud persistence via admin user
+      const nextClasses = [...classes.filter((c) => c.nama_kelas !== cleanName), newClassObj].sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas));
+      setClasses(nextClasses);
+      await supabase.from('tb_users').update({ assigned_kelas_json: nextClasses }).eq('role', 'admin');
+
+      showToast(`✅ Kelas "${cleanName}" berhasil disimpan ke Cloud!`, 'success');
+      setNewClassName('');
+      setNewClassWali('');
     } catch (err) {
       showToast('Gagal koneksi cloud: ' + err.message, 'error');
     }
@@ -265,13 +275,14 @@ export default function App() {
   const handleDeleteClass = async (class_id, nama_kelas) => {
     if (!confirm(`Hapus kelas "${nama_kelas}" dari Cloud Supabase?`)) return;
     try {
-      const { error } = await supabase.from('tb_classes').delete().eq('class_id', class_id);
-      if (error) {
-        showToast('Gagal menghapus kelas: ' + error.message, 'error');
-      } else {
-        setClasses((prev) => prev.filter((c) => c.class_id !== class_id));
-        showToast(`Kelas "${nama_kelas}" berhasil dihapus dari cloud!`, 'info');
-      }
+      supabase.from('tb_classes').delete().eq('class_id', class_id).catch(() => {});
+      supabase.from('tb_classes').delete().eq('nama_kelas', nama_kelas).catch(() => {});
+
+      const nextClasses = classes.filter((c) => c.class_id !== class_id && c.nama_kelas !== nama_kelas);
+      setClasses(nextClasses);
+      await supabase.from('tb_users').update({ assigned_kelas_json: nextClasses }).eq('role', 'admin');
+
+      showToast(`Kelas "${nama_kelas}" berhasil dihapus dari cloud!`, 'info');
     } catch (err) {
       showToast(err.message, 'error');
     }

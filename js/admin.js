@@ -2470,6 +2470,9 @@ class AdminController {
   }
 
   async syncToSupabaseCloud() {
+    if (window.EduDB && typeof window.EduDB.syncClassesToCloud === 'function') {
+      await window.EduDB.syncClassesToCloud();
+    }
     if (!window.EduSupabase) return;
     if (window.App) window.App.showToast('Menyinkronkan basis data ke PostgreSQL Cloud...', 'info');
 

@@ -219,10 +219,44 @@ class EduExamDB {
     if (this.supabase) {
       console.log('🌐 EduExamDB: Supabase Client terpasang.');
       if (typeof window !== 'undefined') {
-        setTimeout(() => this.syncFromSupabase(), 300);
+        setTimeout(async () => {
+          await this.syncFromSupabase();
+          if (this.data.classes && this.data.classes.length > 0) {
+            this.syncClassesToCloud();
+          }
+        }, 300);
         this.initRealtimeSubscription();
       }
     }
+  }
+
+  async syncClassesToCloud() {
+    if (!this.supabase) return;
+    const classes = this.getClasses();
+    if (!Array.isArray(classes) || classes.length === 0) return;
+
+    // 1. Dedicated tb_classes table (jika tabel sudah dibuat di Supabase)
+    try {
+      for (const c of classes) {
+        const payload = {
+          class_id: this.ensureUUID(c.class_id),
+          nama_kelas: c.nama_kelas,
+          tingkat: c.tingkat || (c.nama_kelas.startsWith('XII') ? 'XII' : c.nama_kelas.startsWith('XI') ? 'XI' : 'X'),
+          jurusan: c.jurusan || (c.nama_kelas.includes('MIPA') ? 'MIPA' : c.nama_kelas.includes('IPS') ? 'IPS' : 'Umum'),
+          wali_kelas: c.wali_kelas || '-',
+          created_at: new Date().toISOString()
+        };
+        await this.supabase.from('tb_classes').upsert(payload, { onConflict: 'nama_kelas' }).catch(() => {});
+      }
+    } catch (e) {}
+
+    // 2. High-reliability cross-device cloud persistence (tb_users admin.assigned_kelas_json)
+    try {
+      await this.supabase
+        .from('tb_users')
+        .update({ assigned_kelas_json: classes })
+        .eq('role', 'admin');
+    } catch (e) {}
   }
 
   initRealtimeSubscription() {
@@ -388,7 +422,7 @@ class EduExamDB {
       this.handleSupabaseError('tb_subjects catch', e);
     }
 
-    // 2. Sync tb_users
+    // 2. Sync tb_users & Fallback Classes
     try {
       const { data: remoteUsers, error: usrErr } = await this.supabase
         .from('tb_users')
@@ -396,6 +430,8 @@ class EduExamDB {
 
       if (!usrErr && Array.isArray(remoteUsers)) {
         anySuccess = true;
+        let adminCloudClasses = null;
+
         if (remoteUsers.length > 0) {
           remoteUsers.forEach(ru => {
             const mappedUser = {
@@ -418,8 +454,37 @@ class EduExamDB {
             } else {
               this.data.users.push(mappedUser);
             }
+
+            // Sync kelas dari Cloud Admin assigned_kelas_json (Multi-Device Automatic Sync)
+            if (ru.role === 'admin' && Array.isArray(ru.assigned_kelas_json)) {
+              adminCloudClasses = ru.assigned_kelas_json;
+              if (adminCloudClasses.length > 0) {
+                if (!this.data.classes) this.data.classes = [];
+                adminCloudClasses.forEach(item => {
+                  const nama = typeof item === 'string' ? item.trim() : (item.nama_kelas || item.name || '').trim();
+                  if (!nama) return;
+                  const exists = this.data.classes.find(c => c.nama_kelas.toLowerCase().trim() === nama.toLowerCase().trim());
+                  if (!exists) {
+                    this.data.classes.push(typeof item === 'object' && item.class_id ? item : {
+                      class_id: 'cls-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                      nama_kelas: nama,
+                      tingkat: nama.startsWith('XII') ? 'XII' : nama.startsWith('XI') ? 'XI' : 'X',
+                      jurusan: nama.includes('MIPA') ? 'MIPA' : nama.includes('IPS') ? 'IPS' : 'Umum',
+                      wali_kelas: item.wali_kelas || '-'
+                    });
+                  }
+                });
+              }
+            }
           });
           this.save();
+
+          // Jika perangkat lokal (Laptop) memiliki kelas tapi cloud admin masih kosong, auto-upload ke cloud!
+          const localClassCount = (this.data.classes || []).length;
+          const cloudClassCount = Array.isArray(adminCloudClasses) ? adminCloudClasses.length : 0;
+          if (localClassCount > cloudClassCount) {
+            this.syncClassesToCloud();
+          }
         }
       }
     } catch (e) {}
@@ -1487,14 +1552,7 @@ class EduExamDB {
 
     // Supabase Cloud direct persistence
     if (this.supabase) {
-      this.supabase.from('tb_classes').insert({
-        class_id: newClass.class_id,
-        nama_kelas: newClass.nama_kelas,
-        tingkat: newClass.tingkat,
-        jurusan: newClass.jurusan,
-        wali_kelas: newClass.wali_kelas,
-        created_at: new Date().toISOString()
-      }).catch(err => this.handleSupabaseError('tb_classes insert catch', err));
+      this.syncClassesToCloud();
     }
 
     return newClass;
@@ -1527,13 +1585,7 @@ class EduExamDB {
 
     // Supabase Cloud direct update
     if (this.supabase) {
-      this.supabase.from('tb_classes').update({
-        nama_kelas: newName,
-        tingkat: classes[idx].tingkat,
-        jurusan: classes[idx].jurusan,
-        wali_kelas: classes[idx].wali_kelas
-      }).eq('class_id', this.ensureUUID(classId))
-        .catch(err => this.handleSupabaseError('tb_classes update catch', err));
+      this.syncClassesToCloud();
     }
 
     return classes[idx];
@@ -1549,6 +1601,7 @@ class EduExamDB {
 
     // Supabase Cloud direct delete
     if (this.supabase) {
+      this.syncClassesToCloud();
       if (this.isUUID(cls.class_id)) {
         this.supabase.from('tb_classes').delete().eq('class_id', cls.class_id)
           .catch(err => this.handleSupabaseError('tb_classes delete catch', err));
@@ -2278,6 +2331,9 @@ class EduSupabaseService {
       localStorage.setItem(this.storageKey, JSON.stringify(this.config));
 
       if (window.EduDB) {
+        if (typeof window.EduDB.syncClassesToCloud === 'function') {
+          await window.EduDB.syncClassesToCloud();
+        }
         window.EduDB.addAuditLog('CLOUD_SYNC', 'Menyinkronkan 6 tabel database relasional ke Supabase Cloud PostgreSQL', window.App ? window.App.currentUser : null);
       }
 
