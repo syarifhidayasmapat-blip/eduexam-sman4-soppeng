@@ -232,25 +232,27 @@ class EduExamDB {
 
   async syncClassesToCloud() {
     if (!this.supabase) return;
-    const classes = this.getClasses();
-    if (!Array.isArray(classes) || classes.length === 0) return;
+    const classes = this.getClasses() || [];
 
     // 1. Dedicated tb_classes table (jika tabel sudah dibuat di Supabase)
     try {
-      for (const c of classes) {
-        const payload = {
-          class_id: this.ensureUUID(c.class_id),
-          nama_kelas: c.nama_kelas,
-          tingkat: c.tingkat || (c.nama_kelas.startsWith('XII') ? 'XII' : c.nama_kelas.startsWith('XI') ? 'XI' : 'X'),
-          jurusan: c.jurusan || (c.nama_kelas.includes('MIPA') ? 'MIPA' : c.nama_kelas.includes('IPS') ? 'IPS' : 'Umum'),
-          wali_kelas: c.wali_kelas || '-',
-          created_at: new Date().toISOString()
-        };
-        await this.supabase.from('tb_classes').upsert(payload, { onConflict: 'nama_kelas' }).catch(() => {});
+      if (classes.length > 0) {
+        for (const c of classes) {
+          const payload = {
+            class_id: this.ensureUUID(c.class_id),
+            nama_kelas: c.nama_kelas,
+            tingkat: c.tingkat || (c.nama_kelas.startsWith('XII') ? 'XII' : c.nama_kelas.startsWith('XI') ? 'XI' : 'X'),
+            jurusan: c.jurusan || (c.nama_kelas.includes('MIPA') ? 'MIPA' : c.nama_kelas.includes('IPS') ? 'IPS' : 'Umum'),
+            wali_kelas: c.wali_kelas || '-',
+            created_at: new Date().toISOString()
+          };
+          await this.supabase.from('tb_classes').upsert(payload, { onConflict: 'nama_kelas' }).catch(() => {});
+        }
       }
     } catch (e) {}
 
     // 2. High-reliability cross-device cloud persistence (tb_users admin.assigned_kelas_json)
+    // NOTE: Selalu kirim update ke Supabase BAHKAN saat classes bernilai [] (kosong) agar penghapusan tersinkron!
     try {
       await this.supabase
         .from('tb_users')
@@ -375,7 +377,9 @@ class EduExamDB {
         anySuccess = true;
         if (!this.data.classes) this.data.classes = [];
         remoteClasses.forEach(rc => {
-          const exists = this.data.classes.find(c => c.class_id === rc.class_id || c.nama_kelas.toLowerCase().trim() === rc.nama_kelas.toLowerCase().trim());
+          const rcName = (rc.nama_kelas || '').trim().toLowerCase();
+          if (this._deletedClassNames && this._deletedClassNames.has(rcName)) return;
+          const exists = this.data.classes.find(c => c.class_id === rc.class_id || c.nama_kelas.toLowerCase().trim() === rcName);
           if (!exists) {
             this.data.classes.push({
               class_id: rc.class_id,
@@ -403,7 +407,9 @@ class EduExamDB {
         anySuccess = true;
         if (remoteSubjects.length > 0) {
           remoteSubjects.forEach(rs => {
-            const exists = this.data.subjects.find(s => s.subject_id === rs.subject_id || s.nama_mapel.toLowerCase() === rs.nama_mapel.toLowerCase());
+            const sName = (rs.nama_mapel || '').trim().toLowerCase();
+            if (this._deletedSubjectNames && this._deletedSubjectNames.has(sName)) return;
+            const exists = this.data.subjects.find(s => s.subject_id === rs.subject_id || s.nama_mapel.toLowerCase().trim() === sName);
             if (!exists) {
               this.data.subjects.push({
                 subject_id: rs.subject_id,
@@ -434,6 +440,12 @@ class EduExamDB {
 
         if (remoteUsers.length > 0) {
           remoteUsers.forEach(ru => {
+            const uid = ru.user_id ? String(ru.user_id).trim().toLowerCase() : '';
+            const uname = ru.username ? String(ru.username).trim().toLowerCase() : '';
+            if (this._deletedUserIds && (this._deletedUserIds.has(uid) || (uname && this._deletedUserIds.has(uname)))) {
+              return;
+            }
+
             const mappedUser = {
               user_id: ru.user_id,
               username: ru.username,
@@ -458,9 +470,18 @@ class EduExamDB {
             // Sync kelas dari Cloud Admin assigned_kelas_json (Multi-Device Automatic Sync)
             if (ru.role === 'admin' && Array.isArray(ru.assigned_kelas_json)) {
               adminCloudClasses = ru.assigned_kelas_json;
-              if (adminCloudClasses.length > 0) {
+              const validCloudClasses = adminCloudClasses.filter(item => {
+                const nama = typeof item === 'string' ? item.trim().toLowerCase() : (item.nama_kelas || item.name || '').trim().toLowerCase();
+                return nama && !(this._deletedClassNames && this._deletedClassNames.has(nama));
+              });
+
+              if (validCloudClasses.length < adminCloudClasses.length) {
+                this.syncClassesToCloud();
+              }
+
+              if (validCloudClasses.length > 0) {
                 if (!this.data.classes) this.data.classes = [];
-                adminCloudClasses.forEach(item => {
+                validCloudClasses.forEach(item => {
                   const nama = typeof item === 'string' ? item.trim() : (item.nama_kelas || item.name || '').trim();
                   if (!nama) return;
                   const exists = this.data.classes.find(c => c.nama_kelas.toLowerCase().trim() === nama.toLowerCase().trim());
@@ -1323,12 +1344,19 @@ class EduExamDB {
     this.data.users.push(newUser);
     this.save();
 
+    // Jika sebelumnya pernah dihapus, buka blokirnya
+    if (this._deletedUserIds) {
+      this._deletedUserIds.delete(String(uId).toLowerCase());
+      if (newUser.username) this._deletedUserIds.delete(String(newUser.username).toLowerCase());
+    }
+
     // Supabase Cloud sync tb_users
     if (this.supabase) {
+      const emailValue = newUser.email || `${(newUser.username || newUser.nis || 'user').toLowerCase()}@sman4soppeng.sch.id`;
       this.supabase.from('tb_users').upsert({
         user_id: newUser.user_id,
         username: newUser.username || newUser.nis,
-        email: newUser.email || null,
+        email: emailValue,
         password_hash: newUser.password_hash || newUser.nis || '123456',
         nama_lengkap: newUser.nama_lengkap,
         role: newUser.role,
@@ -1349,10 +1377,11 @@ class EduExamDB {
       const u = this.data.users[idx];
 
       if (this.supabase) {
+        const emailValue = u.email || `${(u.username || u.nis || 'user').toLowerCase()}@sman4soppeng.sch.id`;
         this.supabase.from('tb_users').upsert({
           user_id: this.ensureUUID(u.user_id),
           username: u.username || u.nis,
-          email: u.email || null,
+          email: emailValue,
           password_hash: u.password_hash || u.nis || '123456',
           nama_lengkap: u.nama_lengkap,
           role: u.role,
@@ -1385,13 +1414,18 @@ class EduExamDB {
     });
     this.save();
 
+    // Catat user yang dihapus agar tidak direstore oleh background sync
+    if (!this._deletedUserIds) this._deletedUserIds = new Set();
+    this._deletedUserIds.add(cleanId);
+    if (targetUsername) this._deletedUserIds.add(targetUsername);
+
     if (this.supabase) {
-      const uuidToDelete = this.ensureUUID(userId);
-      this.supabase.from('tb_users').delete().eq('user_id', uuidToDelete)
-        .catch(err => this.handleSupabaseError('tb_users delete catch', err));
+      if (this.isUUID(userId)) {
+        this.supabase.from('tb_users').delete().eq('user_id', userId).catch(() => {});
+      }
+      this.supabase.from('tb_users').delete().eq('user_id', this.ensureUUID(userId)).catch(() => {});
       if (targetUsername) {
-        this.supabase.from('tb_users').delete().eq('username', targetUsername)
-          .catch(err => this.handleSupabaseError('tb_users delete by username catch', err));
+        this.supabase.from('tb_users').delete().eq('username', targetUsername).catch(() => {});
       }
     }
 
@@ -1468,11 +1502,17 @@ class EduExamDB {
 
   deleteSubject(subjectId, operatorUser = null) {
     const subjects = this.getSubjects();
-    const target = subjects.find(s => s.subject_id === subjectId);
+    const cleanId = String(subjectId || '').trim();
+    const target = subjects.find(s => s.subject_id === cleanId || s.nama_mapel.toLowerCase().trim() === cleanId.toLowerCase());
     if (!target) return false;
 
     const removedName = target.nama_mapel;
-    this.data.subjects = subjects.filter(s => s.subject_id !== subjectId);
+    const removedId = target.subject_id;
+    this.data.subjects = subjects.filter(s => s.subject_id !== removedId && s.nama_mapel.toLowerCase().trim() !== removedName.toLowerCase().trim());
+
+    // Catat mapel yang dihapus agar tidak direstore oleh background sync
+    if (!this._deletedSubjectNames) this._deletedSubjectNames = new Set();
+    this._deletedSubjectNames.add(removedName.toLowerCase().trim());
 
     // Otomatis bersihkan mapel dari assignment guru (mata_pelajaran_list & mapel)
     if (Array.isArray(this.data.users)) {
@@ -1505,6 +1545,7 @@ class EduExamDB {
         if (error) this.handleSupabaseError('tb_subjects delete', error);
         else this.handleSupabaseSuccess('tb_subjects delete');
       }).catch(err => this.handleSupabaseError('tb_subjects delete catch', err));
+      this.supabase.from('tb_subjects').delete().eq('nama_mapel', removedName).catch(() => {});
     }
 
     return true;
@@ -1520,7 +1561,12 @@ class EduExamDB {
   }
 
   getClassById(classId) {
-    return this.getClasses().find(c => c.class_id === classId);
+    if (!classId) return null;
+    const clean = String(classId).trim();
+    return this.getClasses().find(c => 
+      (c.class_id && String(c.class_id).trim() === clean) ||
+      (c.nama_kelas && c.nama_kelas.toLowerCase().trim() === clean.toLowerCase())
+    );
   }
 
   getClassByName(className) {
@@ -1537,6 +1583,11 @@ class EduExamDB {
     const existing = this.getClassByName(namaKelas);
     if (existing) {
       throw new Error(`Kelas "${namaKelas}" sudah terdaftar!`);
+    }
+
+    // Jika sebelumnya pernah dihapus dalam sesi ini, buka blokirnya
+    if (this._deletedClassNames) {
+      this._deletedClassNames.delete(namaKelas.toLowerCase().trim());
     }
 
     const cId = classData.class_id ? this.ensureUUID(classData.class_id) : this.generateUUID();
@@ -1560,7 +1611,7 @@ class EduExamDB {
 
   updateClass(classId, updateData) {
     const classes = this.getClasses();
-    const idx = classes.findIndex(c => c.class_id === classId);
+    const idx = classes.findIndex(c => c.class_id === classId || c.nama_kelas === classId);
     if (idx === -1) throw new Error('Kelas tidak ditemukan!');
 
     const oldName = classes[idx].nama_kelas;
@@ -1593,21 +1644,35 @@ class EduExamDB {
 
   deleteClass(classId) {
     const classes = this.getClasses();
-    const cls = classes.find(c => c.class_id === classId || c.nama_kelas === classId);
+    const cleanId = String(classId || '').trim();
+    const cls = this.getClassById(classId) || classes.find(c => 
+      c.class_id === cleanId || 
+      c.nama_kelas.toLowerCase().trim() === cleanId.toLowerCase()
+    );
     if (!cls) return false;
 
-    this.data.classes = classes.filter(c => c.class_id !== cls.class_id);
+    const removedName = cls.nama_kelas;
+    const removedId = cls.class_id;
+
+    // Filter out locally by both class_id and nama_kelas
+    this.data.classes = classes.filter(c => 
+      c.class_id !== removedId && 
+      c.nama_kelas.toLowerCase().trim() !== removedName.toLowerCase().trim()
+    );
     this.save();
 
-    // Supabase Cloud direct delete
+    // Catat kelas yang dihapus agar tidak direstore oleh syncFromSupabase
+    if (!this._deletedClassNames) this._deletedClassNames = new Set();
+    this._deletedClassNames.add(removedName.toLowerCase().trim());
+    if (removedId) this._deletedClassNames.add(String(removedId).toLowerCase().trim());
+
+    // Supabase Cloud direct delete & sync
     if (this.supabase) {
       this.syncClassesToCloud();
-      if (this.isUUID(cls.class_id)) {
-        this.supabase.from('tb_classes').delete().eq('class_id', cls.class_id)
-          .catch(err => this.handleSupabaseError('tb_classes delete catch', err));
+      if (this.isUUID(removedId)) {
+        this.supabase.from('tb_classes').delete().eq('class_id', removedId).catch(() => {});
       }
-      this.supabase.from('tb_classes').delete().eq('nama_kelas', cls.nama_kelas)
-        .catch(err => this.handleSupabaseError('tb_classes delete by name catch', err));
+      this.supabase.from('tb_classes').delete().eq('nama_kelas', removedName).catch(() => {});
     }
 
     return true;
@@ -1917,11 +1982,12 @@ class EduExamDB {
 
     // Supabase Cloud sync tb_users
     if (this.supabase) {
+      const emailValue = user.email || `${(user.username || user.nis || 'guru').toLowerCase()}@sman4soppeng.sch.id`;
       this.supabase.from('tb_users').upsert({
         user_id: this.ensureUUID(user.user_id),
         username: user.username,
-        email: user.email || null,
-        password_hash: user.password_hash,
+        email: emailValue,
+        password_hash: user.password_hash || '123456',
         nama_lengkap: user.nama_lengkap,
         role: user.role,
         assigned_mapel_json: user.mata_pelajaran_list || [],

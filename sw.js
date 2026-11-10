@@ -5,7 +5,7 @@
  * Pengembang: Syarif Hidayatullah, S.Pd.
  */
 
-const CACHE_NAME = 'eduexam-pwa-v17.9';
+const CACHE_NAME = 'eduexam-pwa-v18.0';
 
 // Daftar aset inti yang di-precached saat instalasi Service Worker
 const PRECACHE_ASSETS = [
